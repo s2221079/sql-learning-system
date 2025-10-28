@@ -10,7 +10,14 @@ import openpyxl
 app = Flask(__name__)
 app.secret_key = "s2221079"
 
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+# OpenAIクライアントの初期化
+api_key = os.environ.get("OPENAI_API_KEY")
+if api_key:
+    client = OpenAI(api_key=api_key)
+else:
+    client = None
+    print("⚠️ OPENAI_API_KEY が設定されていません")
+    
 DB_FILE = "学習履歴.db"
 
 # データベース初期化
@@ -1320,4 +1327,5 @@ def practice():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
+
     app.run(host='0.0.0.0', port=port, debug=False)
