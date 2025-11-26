@@ -1,0 +1,36 @@
+python-3.11.0
+```
+
+---
+
+## 📄 `Procfile`
+```
+web: gunicorn app:app
+```
+
+---
+
+## 📄 `.gitignore`
+```
+# データベース
+*.db
+
+# 環境変数
+.env
+
+# Python関連
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+
+# OS関連
+.DS_Store
+Thumbs.db
+
+# IDEの設定
+.vscode/
+.idea/
