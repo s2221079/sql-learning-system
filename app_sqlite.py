@@ -1,5 +1,5 @@
 from flask import Flask, request, render_template_string, redirect, url_for, session
-from openai import OpenAI
+import openai
 import os
 import sqlite3
 from datetime import datetime
@@ -10,7 +10,9 @@ import openpyxl
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "s2221079")
 
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+# 安定版の初期化方法
+openai.api_key = os.environ.get("OPENAI_API_KEY")
+
 DB_FILE = "学習履歴.db"
 
 # データベース初期化
@@ -1719,3 +1721,4 @@ if __name__ == "__main__":
         app.run(host='0.0.0.0', port=port)
     else:
         app.run(debug=True, port=port)
+
