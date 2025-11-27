@@ -13,37 +13,83 @@ app.secret_key = os.environ.get("SECRET_KEY", "s2221079")
 # 安定版の初期化方法
 openai.api_key = os.environ.get("OPENAI_API_KEY")
 
-DB_FILE = "学習履歴.db"
+# データベース設定
+DATABASE_URL = os.environ.get("DATABASE_URL")
+
+if DATABASE_URL:
+    # PostgreSQL（本番環境）
+    import psycopg2
+    from psycopg2.extras import DictCursor
+    
+    # Render の postgres:// を postgresql:// に変換
+    if DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    
+    def get_db_connection():
+        return psycopg2.connect(DATABASE_URL)
+    
+    DB_TYPE = "postgresql"
+    print("✅ PostgreSQL接続モード")
+else:
+    # SQLite（ローカル開発）
+    DB_FILE = "学習履歴.db"
+    
+    def get_db_connection():
+        return sqlite3.connect(DB_FILE)
+    
+    DB_TYPE = "sqlite"
+    print("✅ SQLite接続モード")
 
 # データベース初期化
 def init_db():
-    conn = sqlite3.connect(DB_FILE)
+    conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS logs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id TEXT NOT NULL,
-            timestamp TEXT NOT NULL,
-            problem_id TEXT NOT NULL,
-            format TEXT,
-            user_sql TEXT,
-            user_explanation TEXT,
-            sql_result TEXT,
-            sql_feedback TEXT,
-            meaning_result TEXT,
-            meaning_feedback TEXT
-        )
-    ''')
     
-    cursor.execute("PRAGMA table_info(logs)")
-    columns = [column[1] for column in cursor.fetchall()]
-    if 'format' not in columns:
-        cursor.execute('ALTER TABLE logs ADD COLUMN format TEXT')
-        print("✅ format列を追加しました")
+    if DB_TYPE == "postgresql":
+        # PostgreSQL用のCREATE TABLE
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS logs (
+                id SERIAL PRIMARY KEY,
+                user_id TEXT NOT NULL,
+                timestamp TEXT NOT NULL,
+                problem_id TEXT NOT NULL,
+                format TEXT,
+                user_sql TEXT,
+                user_explanation TEXT,
+                sql_result TEXT,
+                sql_feedback TEXT,
+                meaning_result TEXT,
+                meaning_feedback TEXT
+            )
+        ''')
+    else:
+        # SQLite用のCREATE TABLE
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                timestamp TEXT NOT NULL,
+                problem_id TEXT NOT NULL,
+                format TEXT,
+                user_sql TEXT,
+                user_explanation TEXT,
+                sql_result TEXT,
+                sql_feedback TEXT,
+                meaning_result TEXT,
+                meaning_feedback TEXT
+            )
+        ''')
+        
+        # format列の追加チェック（SQLiteのみ）
+        cursor.execute("PRAGMA table_info(logs)")
+        columns = [column[1] for column in cursor.fetchall()]
+        if 'format' not in columns:
+            cursor.execute('ALTER TABLE logs ADD COLUMN format TEXT')
+            print("✅ format列を追加しました")
     
     conn.commit()
     conn.close()
-
+    
 # アプリ起動時にDBを初期化
 init_db()
 
@@ -556,9 +602,13 @@ SQL文の動作を誤解している
 def save_log(user_id, problem_id, format, user_sql, user_explanation, sql_result, sql_feedback, exp_result, exp_feedback):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     try:
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute('''
+            INSERT INTO logs (user_id, timestamp, problem_id, format, user_sql, user_explanation, 
+                            sql_result, sql_feedback, meaning_result, meaning_feedback)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ''' if DB_TYPE == "postgresql" else '''
             INSERT INTO logs (user_id, timestamp, problem_id, format, user_sql, user_explanation, 
                             sql_result, sql_feedback, meaning_result, meaning_feedback)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -572,7 +622,7 @@ def save_log(user_id, problem_id, format, user_sql, user_explanation, sql_result
 
 def get_user_statistics(user_id):
     try:
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         cursor.execute('SELECT COUNT(*) FROM logs WHERE user_id = ?', (user_id,))
@@ -998,7 +1048,7 @@ def home_page():
         <p>適度な休憩を取ることをお勧めします！目を休めて、水分補給をしましょう。</p>
         </div>"""
     
-    return f"""<!doctype html><html><head><title>SQL学習支援システム</title><meta charset="utf-8"><style>body{{font-family:Arial,sans-serif;margin:20px}}.container{{max-width:700px;margin:0 auto}}.user-info{{background-color:#f0f0f0;padding:15px;border-radius:5px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center}}.user-name{{font-weight:bold;color:#333}}.logout-button{{background-color:#dc3545;color:white;padding:8px 15px;border:none;border-radius:5px;cursor:pointer;text-decoration:none;font-size:14px}}.logout-button:hover{{background-color:#c82333}}select,input[type="submit"]{{padding:10px;margin:5px;font-size:16px}}.form-group{{margin:15px 0}}.continue-button{{background-color:#28a745;color:white}}.adaptive-section{{background-color:#e3f2fd;padding:20px;border-radius:10px;margin:20px 0;border-left:5px solid #2196f3}}.adaptive-section h3{{margin-top:0;color:#1976d2}}.group-buttons{{display:flex;gap:15px;margin-top:15px}}.group-button{{flex:1;padding:15px;background-color:#fff;border:2px solid #2196f3;border-radius:8px;cursor:pointer;transition:all 0.3s;text-align:center}}.group-button:hover{{background-color:#2196f3;color:white;transform:translateY(-2px);box-shadow:0 4px 8px rgba(0,0,0,0.2)}}.group-button h4{{margin:0 0 10px 0}}.group-button p{{margin:5px 0;font-size:14px;line-height:1.6}}.group-button-link{{text-decoration:none;color:inherit;display:block}}</style></head><body><div class="container"><div class="user-info"><span class="user-name">ログイン中: {user_id}</span><a href="/logout" class="logout-button">ログアウト</a></div><h1>SQL学習支援システム</h1>{test_mode_indicator}{time_display}{time_notice}<div class="adaptive-section"><h3>🎯 適応的学習モード（推奨）</h3><p>意味説明問題を含む4つの形式で学習し、正答率に応じて自動的に形式が変わります。</p><div class="group-buttons"><a href="/practice?mode=adaptive_a" class="group-button-link"><div class="group-button"><h4>📘 グループA</h4><p>✅ 意味説明あり</p><p>✅ GPTフィードバックあり</p><p>✅ 出題形式動的変化</p></div></a><a href="/practice?mode=adaptive_b" class="group-button-link"><div class="group-button"><h4>📕 グループB</h4><p>✅ 意味説明あり</p><p>❌ GPTフィードバックなし</p><p>✅ 出題形式動的変化</p><p style="font-size:12px;color:#666;margin-top:8px;">※不正解時は正解例のみ表示</p></div></a></div></div><form action="/history" method="get" style="margin-top:20px;"><input type="submit" value="履歴を見る"></form><form action="/stats" method="get" style="margin-top: 10px;"><input type="submit" value="学習統計を見る" style="background-color: #667eea;"></form></div></body></html>"""
+    return f"""<!doctype html><html><head><title>SQL学習支援システム</title><meta charset="utf-8"><style>body{{font-family:Arial,sans-serif;margin:20px}}.container{{max-width:700px;margin:0 auto}}.user-info{{background-color:#f0f0f0;padding:15px;border-radius:5px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center}}.user-name{{font-weight:bold;color:#333}}.logout-button{{background-color:#dc3545;color:white;padding:8px 15px;border:none;border-radius:5px;cursor:pointer;text-decoration:none;font-size:14px}}.logout-button:hover{{background-color:#c82333}}select,input[type="submit"]{{padding:10px;margin:5px;font-size:16px}}.form-group{{margin:15px 0}}.continue-button{{background-color:#28a745;color:white}}.adaptive-section{{background-color:#e3f2fd;padding:20px;border-radius:10px;margin:20px 0;border-left:5px solid #2196f3}}.adaptive-section h3{{margin-top:0;color:#1976d2}}.group-buttons{{display:flex;gap:15px;margin-top:15px}}.group-button{{flex:1;padding:15px;background-color:#fff;border:2px solid #2196f3;border-radius:8px;cursor:pointer;transition:all 0.3s;text-align:center}}.group-button:hover{{background-color:#2196f3;color:white;transform:translateY(-2px);box-shadow:0 4px 8px rgba(0,0,0,0.2)}}.group-button h4{{margin:0 0 10px 0}}.group-button p{{margin:5px 0;font-size:14px;line-height:1.6}}.group-button-link{{text-decoration:none;color:inherit;display:block}}</style></head><body><div class="container"><div class="user-info"><span class="user-name">ログイン中: {user_id}</span><a href="/logout" class="logout-button">ログアウト</a></div><h1>SQL学習支援システム</h1>{test_mode_indicator}{time_display}{time_notice}<div class="adaptive-section"><h3>🎯 適応的学習モード（推奨）</h3><p>意味説明問題を含む4つの形式で学習し、正答率に応じて自動的に形式が変わります。</p><div class="group-buttons"><a href="/practice?mode=adaptive_a" class="group-button-link"><div class="group-button"><h4>📘 グループA</h4><p>✅ 意味説明あり</p><p>✅ GPTフィードバックあり</p><p>✅ 出題形式動的変化</p></div></a><a href="/practice?mode=adaptive_b" class="group-button-link"><div class="group-button"><h4>📕 グループB</h4><p>✅ 意味説明あり</p><p>❌ GPTフィードバックなし</p><p>✅ 出題形式動的変化</p><p style="font-size:12px;color:#666;margin-top:8px;">※不正解時は正解例のみ表示</p></div></a></div></div><form action="/history" method="get" style="margin-top:20px;"><input type="submit" value="履歴を見る"></form><form action="/stats" method="get" style="margin-top: 10px;"><input type="submit" value="学習統計を見る" style="background-color: #667eea;"></form><form action="/export_csv" method="get" style="margin-top: 10px;"><input type="submit" value="📥 学習履歴をダウンロード (CSV)" style="background-color: #28a745;"></form></div></body></html>"""
 
 @app.route("/history")
 def history():
@@ -1092,6 +1142,46 @@ def stats():
     
     html = f"""<!doctype html><html><head><title>学習統計 - SQL学習支援システム</title><meta charset="utf-8"><style>body{{font-family:Arial,sans-serif;margin:20px;background-color:#f5f5f5}}.container{{max-width:800px;margin:0 auto;background:white;padding:30px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1)}}h1{{color:#333;border-bottom:3px solid #667eea;padding-bottom:10px}}.stat-box{{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:20px;border-radius:10px;margin:20px 0;text-align:center}}.stat-box h2{{margin:0;font-size:48px}}.stat-box p{{margin:5px 0 0 0;font-size:18px}}.stats-grid{{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:20px 0}}.stat-card{{background:#f9f9f9;padding:20px;border-radius:8px;border-left:4px solid #667eea}}.stat-card h3{{margin:0 0 10px 0;color:#555;font-size:14px}}.stat-card .number{{font-size:32px;font-weight:bold;color:#333}}table{{width:100%;border-collapse:collapse;margin-top:20px}}th,td{{padding:12px;text-align:left;border-bottom:1px solid #ddd}}th{{background-color:#667eea;color:white}}details summary{{background-color:#f0f0f0;}}details[open] summary{{background-color:#e3f2fd;}}.back-link{{display:inline-block;margin-top:20px;padding:10px 20px;background-color:#667eea;color:white;text-decoration:none;border-radius:5px}}.back-link:hover{{background-color:#5568d3}}</style></head><body><div class="container"><h1>📊 学習統計（ユーザー: {user_id}）</h1><div class="stat-box"><h2>{stats_data['overall_accuracy']}%</h2><p>全体の正解率</p></div><div class="stats-grid"><div class="stat-card"><h3>総回答数</h3><div class="number">{stats_data['total_count']}</div></div><div class="stat-card" style="border-left-color:#28a745;"><h3>正解数</h3><div class="number" style="color:#28a745;">{stats_data['correct_count']}</div></div><div class="stat-card" style="border-left-color:#ffc107;"><h3>部分正解数</h3><div class="number" style="color:#ffc107;">{stats_data['partial_count']}</div></div><div class="stat-card" style="border-left-color:#dc3545;"><h3>不正解数</h3><div class="number" style="color:#dc3545;">{stats_data['incorrect_count']}</div></div></div><h2>📈 構文別・形式別の正解率</h2>{detailed_html}<h2>📝 最近の学習履歴（10件）</h2><table><tr><th>日時</th><th>問題ID</th><th>結果</th></tr>{recent_html}</table><a href="/home" class="back-link">ホームに戻る</a></div></body></html>"""
     return html
+
+@app.route("/export_csv")
+def export_csv():
+    """学習履歴をCSV形式でエクスポート"""
+    if 'user_id' not in session:
+        return redirect('/')
+    
+    import csv
+    from io import StringIO
+    from flask import Response
+    
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM logs ORDER BY timestamp DESC')
+        rows = cursor.fetchall()
+        
+        # カラム名を取得
+        if DB_TYPE == "postgresql":
+            columns = [desc[0] for desc in cursor.description]
+        else:
+            columns = [description[0] for description in cursor.description]
+        
+        conn.close()
+        
+        # CSV作成
+        si = StringIO()
+        writer = csv.writer(si)
+        writer.writerow(columns)
+        writer.writerows(rows)
+        
+        output = si.getvalue()
+        
+        return Response(
+            output,
+            mimetype="text/csv",
+            headers={"Content-Disposition": "attachment;filename=learning_history.csv"}
+        )
+    except Exception as e:
+        return f"エラー: {e}"
 
 @app.route("/")
 def home():
