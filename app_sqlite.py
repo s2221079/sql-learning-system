@@ -508,6 +508,10 @@ def evaluate_sql(user_sql, correct_sql, format, problem=None, enable_gpt_feedbac
 
 def evaluate_meaning(user_explanation, correct_explanation, enable_gpt_feedback=True, problem=None):
     """意味説明評価関数"""
+    print(f"🔍 evaluate_meaning 開始")
+    print(f"   enable_gpt_feedback={enable_gpt_feedback}")
+    print(f"   user_explanation={user_explanation[:50]}...")
+    
     if not user_explanation.strip():
         if enable_gpt_feedback:
             return "不正解 ❌", "説明が入力されていません。"
@@ -520,12 +524,23 @@ def evaluate_meaning(user_explanation, correct_explanation, enable_gpt_feedback=
     if problem and problem.get('id'):
         topic = extract_topic_from_problem_id(problem['id'])
     
+    # APIキーチェック
+    api_key = os.environ.get("OPENAI_API_KEY")
+    print(f"   OPENAI_API_KEY exists: {bool(api_key)}")
+    
+    if not api_key:
+        print("❌ OPENAI_API_KEY が設定されていません")
+        if enable_gpt_feedback:
+            return "不正解 ❌", "システムエラー: APIキーが設定されていません。"
+        else:
+            return "不正解 ❌", ""
+    
     try:
-        if os.environ.get("OPENAI_API_KEY"):
-            problem_title = problem.get('title', '') if problem else ''
-            sql_text = problem.get('answer_sql', '') if problem else ''
-            
-            prompt = f"""あなたはSQL学習システムの評価者です。初学者によるSQL文の意味説明を評価してください。
+        print(f"   OpenAI API呼び出し開始...")
+        problem_title = problem.get('title', '') if problem else ''
+        sql_text = problem.get('answer_sql', '') if problem else ''
+        
+        prompt = f"""あなたはSQL学習システムの評価者です。初学者によるSQL文の意味説明を評価してください。
 
 【最重要ルール】
 1. 学習者の説明が正解例と意味が同じなら、改善点を一切指摘しない
@@ -567,35 +582,48 @@ SQL文の動作を誤解している
 【出力形式】
 判定結果: 正解/部分正解/不正解
 フィードバック: （建設的なアドバイス）"""
-            
-            response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
-                temperature=0.1,
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=250
-            )
-            text = response['choices'][0]['message']['content'].strip()
-            result_match = re.search(r"判定結果[:：]\s*(正解|部分正解|不正解)", text)
-            feedback_match = re.search(r"フィードバック[:：]\s*(.*)", text, re.DOTALL)
-            result = result_match.group(1) if result_match else "不正解"
-            feedback = feedback_match.group(1).strip() if feedback_match else "説明が不十分です。"
-            
-            if result == "正解":
-                result = "正解 ✅"
-            elif result == "部分正解":
-                result = "部分正解 ⚠️"
-            else:
-                result = "不正解 ❌"
-            
-            # グループBの場合はフィードバックを空にする
-            if not enable_gpt_feedback:
-                return result, ""
-            
-            return result, feedback
+        
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            temperature=0.1,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=250
+        )
+        
+        print(f"   ✅ OpenAI API呼び出し成功")
+        
+        text = response['choices'][0]['message']['content'].strip()
+        print(f"   GPT応答: {text[:100]}...")
+        
+        result_match = re.search(r"判定結果[:：]\s*(正解|部分正解|不正解)", text)
+        feedback_match = re.search(r"フィードバック[:：]\s*(.*)", text, re.DOTALL)
+        result = result_match.group(1) if result_match else "不正解"
+        feedback = feedback_match.group(1).strip() if feedback_match else "説明が不十分です。"
+        
+        print(f"   判定結果: {result}")
+        
+        if result == "正解":
+            result = "正解 ✅"
+        elif result == "部分正解":
+            result = "部分正解 ⚠️"
+        else:
+            result = "不正解 ❌"
+        
+        # グループBの場合はフィードバックを空にする
+        if not enable_gpt_feedback:
+            print(f"   グループB: フィードバックを空にします")
+            return result, ""
+        
+        return result, feedback
+        
     except Exception as e:
-        print(f"OpenAI API エラー: {e}")
+        print(f"❌ OpenAI API エラー: {e}")
+        print(f"   エラー詳細: {type(e).__name__}")
+        import traceback
+        traceback.print_exc()
     
     # APIエラー時のフォールバック
+    print(f"   フォールバックに到達")
     if enable_gpt_feedback:
         return "不正解 ❌", "説明が不十分です。"
     else:
@@ -1832,6 +1860,7 @@ if __name__ == "__main__":
         app.run(host='0.0.0.0', port=port)
     else:
         app.run(debug=True, port=port)
+
 
 
 
