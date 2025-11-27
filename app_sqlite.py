@@ -473,13 +473,13 @@ def evaluate_sql(user_sql, correct_sql, format, problem=None, enable_gpt_feedbac
 判定結果: 正解/部分正解/不正解
 フィードバック: （建設的で具体的なアドバイス）"""
                 
-                response = client.chat.completions.create(
+                response = openai.ChatCompletion.create(
                     model="gpt-3.5-turbo",
                     temperature=0.3,
                     messages=[{"role": "user", "content": prompt}],
                     max_tokens=250
                 )
-                text = response.choices[0].message.content.strip()
+                text = response['choices'][0]['message']['content'].strip()
                 
                 result_match = re.search(r"判定結果[:：]\s*(正解|部分正解|不正解)", text)
                 feedback_match = re.search(r"フィードバック[:：]\s*(.*)", text, re.DOTALL)
@@ -574,7 +574,7 @@ SQL文の動作を誤解している
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=250
             )
-            text = response.choices[0].message.content.strip()
+            text = response['choices'][0]['message']['content'].strip()
             result_match = re.search(r"判定結果[:：]\s*(正解|部分正解|不正解)", text)
             feedback_match = re.search(r"フィードバック[:：]\s*(.*)", text, re.DOTALL)
             result = result_match.group(1) if result_match else "不正解"
@@ -1832,6 +1832,7 @@ if __name__ == "__main__":
         app.run(host='0.0.0.0', port=port)
     else:
         app.run(debug=True, port=port)
+
 
 
 
