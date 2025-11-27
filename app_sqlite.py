@@ -568,7 +568,7 @@ SQL文の動作を誤解している
 判定結果: 正解/部分正解/不正解
 フィードバック: （建設的なアドバイス）"""
             
-            response = client.chat.completions.create(
+            response = openai.ChatCompletion.create(
                 model="gpt-3.5-turbo",
                 temperature=0.1,
                 messages=[{"role": "user", "content": prompt}],
@@ -587,6 +587,7 @@ SQL文の動作を誤解している
             else:
                 result = "不正解 ❌"
             
+            # グループBの場合はフィードバックを空にする
             if not enable_gpt_feedback:
                 return result, ""
             
@@ -594,6 +595,7 @@ SQL文の動作を誤解している
     except Exception as e:
         print(f"OpenAI API エラー: {e}")
     
+    # APIエラー時のフォールバック
     if enable_gpt_feedback:
         return "不正解 ❌", "説明が不十分です。"
     else:
@@ -1830,6 +1832,7 @@ if __name__ == "__main__":
         app.run(host='0.0.0.0', port=port)
     else:
         app.run(debug=True, port=port)
+
 
 
 
