@@ -723,13 +723,27 @@ def is_test_mode():
     """テストモードかどうかを判定"""
     return session.get('test_mode', False)
 
-def get_format_question_threshold():
-    """形式変更までの問題数（テストモードでは2問、通常は5問）"""
-    return 2 if is_test_mode() else 5
+def get_format_question_threshold(format=None):
+    """形式変更までの問題数"""
+    # テストモード
+    if is_test_mode():
+        return 2
+    
+    # 通常モード
+    if format in ['記述式', '意味説明']:
+        return 3  # 記述式・意味説明は3問
+    else:
+        return 5  # 選択式・穴埋め式は5問
 
 def get_recent_accuracy(user_id, topic, format, limit=5, start_time=None):
+    # ↓↓↓ ここを修正 ↓↓↓
+    # テストモード、または形式に応じたlimitを設定
     if is_test_mode():
         limit = 2
+    elif format in ['記述式', '意味説明']:
+        limit = 3
+    else:
+        limit = 5
     
     topic_prefix_map = {
         'SELECT': 'SELECT_',
@@ -1518,8 +1532,8 @@ def practice():
                 progress['format_question_count'] = format_question_count
                 session['learning_progress'] = progress
                 
-                threshold = get_format_question_threshold()
-                
+                threshold = get_format_question_threshold(current_format_for_check)
+
                 accuracy_data = get_recent_accuracy(user_id, topic, current_format_for_check, limit=threshold, start_time=start_time)
                 
                 print(f"🔍 形式変更の判定: Topic={topic}, Format={current_format_for_check}")
@@ -1721,4 +1735,5 @@ if __name__ == "__main__":
         app.run(host='0.0.0.0', port=port)
     else:
         app.run(debug=True, port=port)
+
 
