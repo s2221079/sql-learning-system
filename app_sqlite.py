@@ -1440,13 +1440,18 @@ def practice():
     mode = request.args.get("mode", session.get("mode", "random"))
     session["mode"] = mode
     
-    enable_gpt_feedback = True
+    # グループA/Bの判定（修正版）
     if mode == "adaptive_b":
         enable_gpt_feedback = False
         mode = "adaptive"
+        session['enable_gpt_feedback'] = False  # ← ここで保存
     elif mode == "adaptive_a":
         enable_gpt_feedback = True
         mode = "adaptive"
+        session['enable_gpt_feedback'] = True  # ← ここで保存
+    else:
+        # セッションから取得（既に設定されている場合はそれを使う）
+        enable_gpt_feedback = session.get('enable_gpt_feedback', True)
     
     if mode == "adaptive":
         session['enable_gpt_feedback'] = enable_gpt_feedback
@@ -1825,5 +1830,6 @@ if __name__ == "__main__":
         app.run(host='0.0.0.0', port=port)
     else:
         app.run(debug=True, port=port)
+
 
 
