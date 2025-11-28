@@ -2195,15 +2195,29 @@ def select_group():
     
     # ★★★ 「続きから再開」ボタン（進捗がある場合のみ） ★★★
     continue_button = ""
-    if progress and (progress['current_topic'] != 'SELECT' or progress['current_format'] != '選択式'):
-        continue_button = f"""
-        <div style="background-color:#d4edda;padding:20px;border-radius:8px;margin-bottom:20px;border-left:5px solid #28a745;">
-            <h3>✅ 前回の続きから再開</h3>
-            <a href="/practice?mode=adaptive" style="background-color:#28a745;color:white;padding:15px 30px;border:none;border-radius:8px;font-size:18px;cursor:pointer;text-decoration:none;display:inline-block;margin-top:10px;">
-                ▶️ 続きから再開する
-            </a>
-        </div>
-        """
+    if progress:
+        is_select = progress.get('current_topic') == 'SELECT'
+        is_choice = progress.get('current_format') == '選択式'
+        
+        print(f"   判定: current_topic={progress.get('current_topic')}, current_format={progress.get('current_format')}")
+        print(f"   is_select={is_select}, is_choice={is_choice}")
+        print(f"   条件: not (is_select and is_choice) = {not (is_select and is_choice)}")
+        
+        if not (is_select and is_choice):
+            topic_name = topic_names.get(progress['current_topic'], progress['current_topic'])
+            continue_button = f"""
+            <div style="background-color:#d4edda;padding:20px;border-radius:8px;margin-bottom:20px;border-left:5px solid #28a745;">
+                <h3>✅ 前回の続きから再開</h3>
+                <a href="/practice?mode=adaptive" style="background-color:#28a745;color:white;padding:15px 30px;border:none;border-radius:8px;font-size:18px;cursor:pointer;text-decoration:none;display:inline-block;margin-top:10px;">
+                    ▶️ 続きから再開する
+                </a>
+            </div>
+            """
+            print(f"   ✅ 続きから再開ボタンを表示します")
+        else:
+            print(f"   ❌ 続きから再開ボタンは表示しません（SELECT-選択式のため）")
+    else:
+        print(f"   ❌ 進捗がないため、続きから再開ボタンは表示しません")
     
     # 学習位置選択ボタンを生成
     jump_buttons = ""
@@ -2323,6 +2337,7 @@ if __name__ == "__main__":
         app.run(host='0.0.0.0', port=port)
     else:
         app.run(debug=True, port=port)
+
 
 
 
