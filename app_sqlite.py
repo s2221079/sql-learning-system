@@ -1565,7 +1565,7 @@ def topic_explanation():
         {explanation_html}
         
         <div style="margin-top: 20px;">
-            <a href="/practice" class="back-link">← 学習に戻る</a>
+            <a href="/practice?mode=adaptive&skip_explanation=1" class="back-link">← 学習に戻る</a>
         </div>
     </div>
 </body>
@@ -1699,11 +1699,18 @@ def practice():
             current_topic = progress['current_topic']
             current_format = progress['current_format']
         
-        if not session.get('topic_explained'):
-            session['topic_explained'] = True
-            return redirect(f'/topic_explanation?topic={current_topic}')
-        
-        print(f"Debug - 適応的出題: Topic={current_topic}, Format={current_format}")
+            # skip_explanation パラメータがある場合は説明をスキップ
+            skip_explanation = request.args.get('skip_explanation', '0')
+            
+            if not session.get('topic_explained') and skip_explanation != '1':
+                session['topic_explained'] = True
+                return redirect(f'/topic_explanation?topic={current_topic}')
+            
+            # skip_explanation=1 の場合、topic_explained をセット
+            if skip_explanation == '1':
+                session['topic_explained'] = True
+            
+            print(f"Debug - 適応的出題: Topic={current_topic}, Format={current_format}")
     else:
         current_format = request.args.get("format", FORMATS[0])
     
@@ -2137,6 +2144,7 @@ if __name__ == "__main__":
         app.run(host='0.0.0.0', port=port)
     else:
         app.run(debug=True, port=port)
+
 
 
 
