@@ -2157,6 +2157,7 @@ def select_group():
         return redirect('/')
     
     group = request.args.get('group', 'A')
+    user_id = session.get('user_id')
     
     # グループ設定を保存
     if group == 'B':
@@ -2169,10 +2170,8 @@ def select_group():
     group_name = "グループA" if group == "A" else "グループB"
     group_desc = "GPTフィードバックあり" if group == "A" else "GPTフィードバックなし（正解例のみ表示）"
     
-    # 学習位置選択ボタンを生成
-    jump_buttons = ""
-    topics = ['SELECT', 'WHERE', 'ORDERBY', '集約関数', 'GROUPBY', 'HAVING', 'JOIN', 'サブクエリ']
-    formats = ['選択式', '穴埋め式', '記述式', '意味説明']
+    # ★★★ DBから進捗を読み込む ★★★
+    progress = load_learning_progress(user_id)
     
     topic_names = {
         'SELECT': 'SELECT句',
@@ -2184,6 +2183,23 @@ def select_group():
         'JOIN': 'JOIN句',
         'サブクエリ': 'サブクエリ'
     }
+    
+    # ★★★ 「続きから再開」ボタン（進捗がある場合のみ） ★★★
+    continue_button = ""
+    if progress and (progress['current_topic'] != 'SELECT' or progress['current_format'] != '選択式'):
+        continue_button = f"""
+        <div style="background-color:#d4edda;padding:20px;border-radius:8px;margin-bottom:20px;border-left:5px solid #28a745;">
+            <h3>✅ 前回の続きから再開</h3>
+            <a href="/practice?mode=adaptive" style="background-color:#28a745;color:white;padding:15px 30px;border:none;border-radius:8px;font-size:18px;cursor:pointer;text-decoration:none;display:inline-block;margin-top:10px;">
+                ▶️ 続きから再開する
+            </a>
+        </div>
+        """
+    
+    # 学習位置選択ボタンを生成
+    jump_buttons = ""
+    topics = ['SELECT', 'WHERE', 'ORDERBY', '集約関数', 'GROUPBY', 'HAVING', 'JOIN', 'サブクエリ']
+    formats = ['選択式', '穴埋め式', '記述式', '意味説明']
     
     for topic in topics:
         jump_buttons += f"<div style='margin-bottom:20px;'><h4>{topic_names.get(topic, topic)}</h4><div style='display:flex;gap:10px;flex-wrap:wrap;'>"
@@ -2223,21 +2239,6 @@ def select_group():
             margin-bottom: 30px;
             border-left: 5px solid {'#2196f3' if group == 'A' else '#f44336'};
         }}
-        .start-button {{
-            background-color: #28a745;
-            color: white;
-            padding: 15px 30px;
-            border: none;
-            border-radius: 8px;
-            font-size: 18px;
-            cursor:pointer;
-            text-decoration: none;
-            display: inline-block;
-            margin-bottom: 30px;
-        }}
-        .start-button:hover {{
-            background-color: #218838;
-        }}
         h4 {{
             color: #667eea;
             margin-top: 0;
@@ -2246,24 +2247,24 @@ def select_group():
 </head>
 <body>
     <div class="container">
-        <h1>📍 学習位置を選択</h1>
+        <h1>📍 学習開始位置を選択</h1>
         
         <div class="group-info">
             <h3>選択中: {group_name}</h3>
             <p>{group_desc}</p>
         </div>
         
-        <div style="background-color:#fff3cd;padding:15px;border-radius:5px;margin-bottom:30px;border-left:5px solid #ffc107;">
-            <h3>💡 学習位置の選択について</h3>
-            <p><strong>初めての方:</strong> 「最初から始める」をクリックしてください</p>
-            <p><strong>システムトラブルで履歴がリセットされた方:</strong> 以前学習していた位置を選択してください</p>
+        {continue_button}
+        
+        <div style="background-color:#e3f2fd;padding:15px;border-radius:5px;margin-bottom:30px;border-left:5px solid #2196f3;">
+            <h3>💡 どこから始めますか？</h3>
+            <p><strong>✅ 初めての方：</strong> 「SELECT句 - 選択式」を選んでください（一番上）</p>
         </div>
         
-        <a href="/practice?mode=adaptive" class="start-button">
-            🚀 最初から始める（SELECT - 選択式）
-        </a>
-        
-        <h2>または、途中から再開する:</h2>
+        <h2>学習位置を選択:</h2>
+        <p style="font-size:14px;color:#666;margin-bottom:20px;">
+            ※システムトラブルで履歴がリセットされた場合は、ここから再開位置を選んでください
+        </p>
         
         {jump_buttons}
         
@@ -2313,6 +2314,7 @@ if __name__ == "__main__":
         app.run(host='0.0.0.0', port=port)
     else:
         app.run(debug=True, port=port)
+
 
 
 
