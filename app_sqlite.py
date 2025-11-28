@@ -632,23 +632,41 @@ SQL文の動作を誤解している
 def save_log(user_id, problem_id, format, user_sql, user_explanation, sql_result, sql_feedback, exp_result, exp_feedback):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     try:
+        print(f"🔍 ログ保存開始: user_id={user_id}, problem_id={problem_id}, format={format}")
+        print(f"   DB_TYPE={DB_TYPE}")
+        
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute('''
-            INSERT INTO logs (user_id, timestamp, problem_id, format, user_sql, user_explanation, 
-                            sql_result, sql_feedback, meaning_result, meaning_feedback)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        ''' if DB_TYPE == "postgresql" else '''
-            INSERT INTO logs (user_id, timestamp, problem_id, format, user_sql, user_explanation, 
-                            sql_result, sql_feedback, meaning_result, meaning_feedback)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (user_id, timestamp, problem_id, format, user_sql, user_explanation, 
-              sql_result, sql_feedback, exp_result, exp_feedback))
+        
+        if DB_TYPE == "postgresql":
+            query = '''
+                INSERT INTO logs (user_id, timestamp, problem_id, format, user_sql, user_explanation, 
+                                sql_result, sql_feedback, meaning_result, meaning_feedback)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            '''
+        else:
+            query = '''
+                INSERT INTO logs (user_id, timestamp, problem_id, format, user_sql, user_explanation, 
+                                sql_result, sql_feedback, meaning_result, meaning_feedback)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            '''
+        
+        print(f"   クエリ実行中...")
+        cursor.execute(query, (user_id, timestamp, problem_id, format, user_sql, user_explanation, 
+                              sql_result, sql_feedback, exp_result, exp_feedback))
+        
+        print(f"   コミット中...")
         conn.commit()
+        
+        print(f"   接続クローズ中...")
         conn.close()
+        
         print(f"✅ ログ書き込み成功: {timestamp} (User: {user_id}, Format: {format})")
+        
     except Exception as e:
-        print("❌ ログ書き込み失敗:", e)
+        print(f"❌ ログ書き込み失敗: {e}")
+        import traceback
+        traceback.print_exc()
 
 def get_user_statistics(user_id):
     try:
@@ -1860,6 +1878,7 @@ if __name__ == "__main__":
         app.run(host='0.0.0.0', port=port)
     else:
         app.run(debug=True, port=port)
+
 
 
 
