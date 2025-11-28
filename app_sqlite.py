@@ -1155,7 +1155,7 @@ def home_page():
         <p>適度な休憩を取ることをお勧めします！目を休めて、水分補給をしましょう。</p>
         </div>"""
     
-    return f"""<!doctype html><html><head><title>SQL学習支援システム</title><meta charset="utf-8"><style>body{{font-family:Arial,sans-serif;margin:20px}}.container{{max-width:700px;margin:0 auto}}.user-info{{background-color:#f0f0f0;padding:15px;border-radius:5px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center}}.user-name{{font-weight:bold;color:#333}}.logout-button{{background-color:#dc3545;color:white;padding:8px 15px;border:none;border-radius:5px;cursor:pointer;text-decoration:none;font-size:14px}}.logout-button:hover{{background-color:#c82333}}select,input[type="submit"]{{padding:10px;margin:5px;font-size:16px}}.form-group{{margin:15px 0}}.continue-button{{background-color:#28a745;color:white}}.adaptive-section{{background-color:#e3f2fd;padding:20px;border-radius:10px;margin:20px 0;border-left:5px solid #2196f3}}.adaptive-section h3{{margin-top:0;color:#1976d2}}.group-buttons{{display:flex;gap:15px;margin-top:15px}}.group-button{{flex:1;padding:15px;background-color:#fff;border:2px solid #2196f3;border-radius:8px;cursor:pointer;transition:all 0.3s;text-align:center}}.group-button:hover{{background-color:#2196f3;color:white;transform:translateY(-2px);box-shadow:0 4px 8px rgba(0,0,0,0.2)}}.group-button h4{{margin:0 0 10px 0}}.group-button p{{margin:5px 0;font-size:14px;line-height:1.6}}.group-button-link{{text-decoration:none;color:inherit;display:block}}</style></head><body><div class="container"><div class="user-info"><span class="user-name">ログイン中: {user_id}</span><a href="/logout" class="logout-button">ログアウト</a></div><h1>SQL学習支援システム</h1>{test_mode_indicator}{time_display}{time_notice}<div class="adaptive-section"><h3>🎯 適応的学習モード（推奨）</h3><p>意味説明問題を含む4つの形式で学習し、正答率に応じて自動的に形式が変わります。</p><div class="group-buttons"><a href="/practice?mode=adaptive_a" class="group-button-link"><div class="group-button"><h4>📘 グループA</h4><p>✅ 意味説明あり</p><p>✅ GPTフィードバックあり</p><p>✅ 出題形式動的変化</p></div></a><a href="/practice?mode=adaptive_b" class="group-button-link"><div class="group-button"><h4>📕 グループB</h4><p>✅ 意味説明あり</p><p>❌ GPTフィードバックなし</p><p>✅ 出題形式動的変化</p><p style="font-size:12px;color:#666;margin-top:8px;">※不正解時は正解例のみ表示</p></div></a></div></div><form action="/history" method="get" style="margin-top:20px;"><input type="submit" value="履歴を見る"></form><form action="/stats" method="get" style="margin-top: 10px;"><input type="submit" value="学習統計を見る" style="background-color: #667eea;"></form><form action="/export_csv" method="get" style="margin-top: 10px;"><input type="submit" value="📥 学習履歴をダウンロード (CSV)" style="background-color: #28a745;"></form></div></body></html>"""
+    return f"""<!doctype html><html><head><title>SQL学習支援システム</title><meta charset="utf-8"><style>body{{font-family:Arial,sans-serif;margin:20px}}.container{{max-width:700px;margin:0 auto}}.user-info{{background-color:#f0f0f0;padding:15px;border-radius:5px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center}}.user-name{{font-weight:bold;color:#333}}.logout-button{{background-color:#dc3545;color:white;padding:8px 15px;border:none;border-radius:5px;cursor:pointer;text-decoration:none;font-size:14px}}.logout-button:hover{{background-color:#c82333}}select,input[type="submit"]{{padding:10px;margin:5px;font-size:16px}}.form-group{{margin:15px 0}}.continue-button{{background-color:#28a745;color:white}}.adaptive-section{{background-color:#e3f2fd;padding:20px;border-radius:10px;margin:20px 0;border-left:5px solid #2196f3}}.adaptive-section h3{{margin-top:0;color:#1976d2}}.group-buttons{{display:flex;gap:15px;margin-top:15px}}.group-button{{flex:1;padding:15px;background-color:#fff;border:2px solid #2196f3;border-radius:8px;cursor:pointer;transition:all 0.3s;text-align:center}}.group-button:hover{{background-color:#2196f3;color:white;transform:translateY(-2px);box-shadow:0 4px 8px rgba(0,0,0,0.2)}}.group-button h4{{margin:0 0 10px 0}}.group-button p{{margin:5px 0;font-size:14px;line-height:1.6}}.group-button-link{{text-decoration:none;color:inherit;display:block}}</style></head><body><div class="container"><div class="user-info"><span class="user-name">ログイン中: {user_id}</span><a href="/logout" class="logout-button">ログアウト</a></div><h1>SQL学習支援システム</h1>{test_mode_indicator}{time_display}{time_notice}<div class="adaptive-section"><h3>🎯 適応的学習モード（推奨）</h3><p>意味説明問題を含む4つの形式で学習し、正答率に応じて自動的に形式が変わります。</p><div class="group-buttons"><a href="/select_group?group=A" class="group-button-link"><div class="group-button"><h4>📘 グループA</h4><p>✅ 意味説明あり</p><p>✅ GPTフィードバックあり</p><p>✅ 出題形式動的変化</p></div></a><a href="/select_group?group=B" class="group-button-link"><div class="group-button"><h4>📕 グループB</h4><p>✅ 意味説明あり</p><p>❌ GPTフィードバックなし</p><p>✅ 出題形式動的変化</p><p style="font-size:12px;color:#666;margin-top:8px;">※不正解時は正解例のみ表示</p></div></a></div></div><form action="/history" method="get" style="margin-top:20px;"><input type="submit" value="履歴を見る"></form><form action="/stats" method="get" style="margin-top: 10px;"><input type="submit" value="学習統計を見る" style="background-color: #667eea;"></form><form action="/export_csv" method="get" style="margin-top: 10px;"><input type="submit" value="📥 学習履歴をダウンロード (CSV)" style="background-color: #28a745;"></form></div></body></html>"""
 
 @app.route("/history")
 def history():
@@ -1979,12 +1979,165 @@ def practice():
 
     return render_template_string(HTML_TEMPLATE, problem=problem, formats=FORMATS, current_format=current_format, current_topic=current_topic, result=result, sql_result=sql_result, sql_feedback=sql_feedback, exp_result=exp_result, exp_feedback=exp_feedback, mode=mode, request=request, time_elapsed=time_elapsed, enable_gpt_feedback=enable_gpt_feedback, back_buttons=back_buttons, is_reviewing=is_reviewing)
 
+@app.route("/select_group")
+def select_group():
+    if 'user_id' not in session:
+        return redirect('/')
+    
+    group = request.args.get('group', 'A')
+    
+    # グループ設定を保存
+    if group == 'B':
+        session['enable_gpt_feedback'] = False
+    else:
+        session['enable_gpt_feedback'] = True
+    
+    session['mode'] = 'adaptive'
+    
+    group_name = "グループA" if group == "A" else "グループB"
+    group_desc = "GPTフィードバックあり" if group == "A" else "GPTフィードバックなし（正解例のみ表示）"
+    
+    # 学習位置選択ボタンを生成
+    jump_buttons = ""
+    topics = ['SELECT', 'WHERE', 'ORDERBY', '集約関数', 'GROUPBY', 'HAVING', 'JOIN', 'サブクエリ']
+    formats = ['選択式', '穴埋め式', '記述式', '意味説明']
+    
+    topic_names = {
+        'SELECT': 'SELECT句',
+        'WHERE': 'WHERE句',
+        'ORDERBY': 'ORDER BY句',
+        '集約関数': '集約関数',
+        'GROUPBY': 'GROUP BY句',
+        'HAVING': 'HAVING句',
+        'JOIN': 'JOIN句',
+        'サブクエリ': 'サブクエリ'
+    }
+    
+    for topic in topics:
+        jump_buttons += f"<div style='margin-bottom:20px;'><h4>{topic_names.get(topic, topic)}</h4><div style='display:flex;gap:10px;flex-wrap:wrap;'>"
+        for format in formats:
+            jump_buttons += f"""
+            <a href='/jump_to?topic={topic}&format={format}' style='text-decoration:none;'>
+                <button style='padding:10px 20px;background:#667eea;color:white;border:none;border-radius:5px;cursor:pointer;'>
+                    {format}
+                </button>
+            </a>
+            """
+        jump_buttons += "</div></div>"
+    
+    html = f"""<!doctype html>
+<html>
+<head>
+    <title>学習位置を選択 - SQL学習支援システム</title>
+    <meta charset="utf-8">
+    <style>
+        body {{
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }}
+        .container {{
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }}
+        .group-info {{
+            background-color: {'#e3f2fd' if group == 'A' else '#ffe3e3'};
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            border-left: 5px solid {'#2196f3' if group == 'A' else '#f44336'};
+        }}
+        .start-button {{
+            background-color: #28a745;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            cursor:pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin-bottom: 30px;
+        }}
+        .start-button:hover {{
+            background-color: #218838;
+        }}
+        h4 {{
+            color: #667eea;
+            margin-top: 0;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📍 学習位置を選択</h1>
+        
+        <div class="group-info">
+            <h3>選択中: {group_name}</h3>
+            <p>{group_desc}</p>
+        </div>
+        
+        <div style="background-color:#fff3cd;padding:15px;border-radius:5px;margin-bottom:30px;border-left:5px solid #ffc107;">
+            <h3>💡 学習位置の選択について</h3>
+            <p><strong>初めての方:</strong> 「最初から始める」をクリックしてください</p>
+            <p><strong>システムトラブルで履歴がリセットされた方:</strong> 以前学習していた位置を選択してください</p>
+        </div>
+        
+        <a href="/practice?mode=adaptive" class="start-button">
+            🚀 最初から始める（SELECT - 選択式）
+        </a>
+        
+        <h2>または、途中から再開する:</h2>
+        
+        {jump_buttons}
+        
+        <div style="margin-top:30px;">
+            <a href="/home" style="color:#667eea;text-decoration:none;">← ホームに戻る</a>
+        </div>
+    </div>
+</body>
+</html>"""
+    
+    return html
+
+@app.route("/jump_to")
+def jump_to():
+    if 'user_id' not in session:
+        return redirect('/')
+    
+    topic = request.args.get('topic', 'SELECT')
+    format = request.args.get('format', '選択式')
+    
+    # 学習進捗を強制的に設定
+    progress = {
+        'current_topic': topic,
+        'current_format': format,
+        'format_question_count': 0,
+        'format_start_time': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
+    session['learning_progress'] = progress
+    
+    # グループ設定は既に select_group で設定済み
+    # session['enable_gpt_feedback'] と session['mode'] は保持される
+    
+    session.pop('topic_explained', None)  # 説明ページを表示する
+    
+    print(f"🚀 ジャンプ機能: {topic} - {format} にジャンプしました")
+    
+    # その構文の説明ページに飛ばす
+    return redirect(f'/topic_explanation?topic={topic}')
+
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
     if os.environ.get("ENVIRONMENT") == "production":
         app.run(host='0.0.0.0', port=port)
     else:
         app.run(debug=True, port=port)
+
 
 
 
