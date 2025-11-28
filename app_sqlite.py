@@ -1929,57 +1929,57 @@ def practice():
                 idx = session.get("problem_index", 0)
                 session["current_problem"] = all_problems[idx % len(all_problems)]
                 session["problem_index"] = idx + 1
+        
+        # ★★★ ここを修正：elif → if に変更 ★★★
+        if "current_problem" not in session:
+            session["last_format"] = current_format
+            
+            if mode == "adaptive":
+                # 既にprogressがあればそれを使う
+                progress = session.get('learning_progress', {
+                    'current_topic': 'SELECT',
+                    'current_format': '選択式',
+                    'format_question_count': 0,
+                    'format_start_time': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                })
                 
-            elif "current_problem" not in session:
-                session["last_format"] = current_format
+                # progressを上書きしない
+                if 'learning_progress' not in session:
+                    session['learning_progress'] = progress
                 
-                if mode == "adaptive":
-                    # ★★★ 修正：既にprogressがあればそれを使う ★★★
-                    progress = session.get('learning_progress', {
-                        'current_topic': 'SELECT',
-                        'current_format': '選択式',
-                        'format_question_count': 0,
-                        'format_start_time': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    })
+                current_topic = progress['current_topic']
+                current_format = progress['current_format']
+                
+                if not session.get('topic_explained'):
+                    return redirect(f'/topic_explanation?topic={current_topic}')
+                
+                # current_topicに応じた問題を取得
+                topic_prefix_map = {
+                    'SELECT': 'SELECT_',
+                    'WHERE': 'WHERE_',
+                    'ORDERBY': 'ORDERBY_',
+                    '集約関数': 'AGG_',
+                    'GROUPBY': 'GROUPBY_',
+                    'HAVING': 'HAVING_',
+                    'JOIN': 'JOIN_',
+                    'サブクエリ': 'SUBQUERY_'
+                }
+                
+                prefix = topic_prefix_map.get(current_topic, 'SELECT_')
+                topic_problems = [p for p in all_problems if p['id'].startswith(prefix)]
+                
+                if topic_problems:
+                    selected_problem = random.choice(topic_problems)
+                    session["current_problem"] = selected_problem
                     
-                    # ★★★ 修正：progressを上書きしない ★★★
-                    if 'learning_progress' not in session:
-                        session['learning_progress'] = progress
+                    add_completed_format(current_topic, current_format)
                     
-                    current_topic = progress['current_topic']
-                    current_format = progress['current_format']
+                    recent_problem_ids = {current_topic: [selected_problem['id']]}
+                    session['recent_problem_ids'] = recent_problem_ids
                     
-                    # ★★★ 修正：topic_explainedのチェックをcurrent_topicで行う ★★★
-                    if not session.get('topic_explained'):
-                        return redirect(f'/topic_explanation?topic={current_topic}')
-                    
-                    # ★★★ 修正：current_topicに応じた問題を取得 ★★★
-                    topic_prefix_map = {
-                        'SELECT': 'SELECT_',
-                        'WHERE': 'WHERE_',
-                        'ORDERBY': 'ORDERBY_',
-                        '集約関数': 'AGG_',
-                        'GROUPBY': 'GROUPBY_',
-                        'HAVING': 'HAVING_',
-                        'JOIN': 'JOIN_',
-                        'サブクエリ': 'SUBQUERY_'
-                    }
-                    
-                    prefix = topic_prefix_map.get(current_topic, 'SELECT_')
-                    topic_problems = [p for p in all_problems if p['id'].startswith(prefix)]
-                    
-                    if topic_problems:
-                        selected_problem = random.choice(topic_problems)
-                        session["current_problem"] = selected_problem
-                        
-                        add_completed_format(current_topic, current_format)
-                        
-                        recent_problem_ids = {current_topic: [selected_problem['id']]}
-                        session['recent_problem_ids'] = recent_problem_ids
-                        
-                        print(f"Debug - 初回問題（ジャンプ後）: {selected_problem['id']}, Topic={current_topic}, Format={current_format}")
-                    else:
-                        session["current_problem"] = all_problems[0]
+                    print(f"Debug - 初回問題（ジャンプ後）: {selected_problem['id']}, Topic={current_topic}, Format={current_format}")
+                else:
+                    session["current_problem"] = all_problems[0]
             elif mode == "random":
                 session["remaining_problems"] = all_problems.copy()
                 random.shuffle(session["remaining_problems"])
@@ -1988,7 +1988,8 @@ def practice():
                 session["problem_index"] = 1
                 session["current_problem"] = all_problems[0]
         
-        elif request.args.get("format") and session.get("last_format") != current_format:
+        # ★★★ ここを修正：elif → if に変更 ★★★
+        if request.args.get("format") and session.get("last_format") != current_format:
             session["last_format"] = current_format
 
     problem = session.get("current_problem")
@@ -2170,6 +2171,7 @@ if __name__ == "__main__":
         app.run(host='0.0.0.0', port=port)
     else:
         app.run(debug=True, port=port)
+
 
 
 
