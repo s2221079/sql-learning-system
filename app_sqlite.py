@@ -2170,8 +2170,17 @@ def select_group():
     group_name = "グループA" if group == "A" else "グループB"
     group_desc = "GPTフィードバックあり" if group == "A" else "GPTフィードバックなし（正解例のみ表示）"
     
-    # ★★★ DBから進捗を読み込む ★★★
+    # ★★★ DBから進捗を読み込む + デバッグ ★★★
     progress = load_learning_progress(user_id)
+    
+    print("=" * 50)
+    print(f"🔍 select_group デバッグ")
+    print(f"   user_id: {user_id}")
+    print(f"   progress: {progress}")
+    if progress:
+        print(f"   current_topic: {progress.get('current_topic')}")
+        print(f"   current_format: {progress.get('current_format')}")
+    print("=" * 50)
     
     topic_names = {
         'SELECT': 'SELECT句',
@@ -2314,6 +2323,7 @@ if __name__ == "__main__":
         app.run(host='0.0.0.0', port=port)
     else:
         app.run(debug=True, port=port)
+
 
 
 
