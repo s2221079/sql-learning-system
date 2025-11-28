@@ -1687,30 +1687,29 @@ def practice():
             session["current_problem"] = selected_problem
             print(f"↩️ 元の進捗に戻りました: {current_topic} - {current_format}")
     
-    if mode == "adaptive":
-        if 'temp_format' in session and 'temp_topic' in session:
-            current_topic = session['temp_topic']
-            current_format = session['temp_format']
-        else:
-            progress = session.get('learning_progress', {
-                'current_topic': 'SELECT',
-                'current_format': '選択式'
-            })
-            current_topic = progress['current_topic']
-            current_format = progress['current_format']
-        
-            # skip_explanation パラメータがある場合は説明をスキップ
-            skip_explanation = request.args.get('skip_explanation', '0')
-            
-            if not session.get('topic_explained') and skip_explanation != '1':
-                session['topic_explained'] = True
-                return redirect(f'/topic_explanation?topic={current_topic}')
-            
-            # skip_explanation=1 の場合、topic_explained をセット
-            if skip_explanation == '1':
-                session['topic_explained'] = True
-            
-            print(f"Debug - 適応的出題: Topic={current_topic}, Format={current_format}")
+            if mode == "adaptive":
+                # skip_explanation パラメータを先にチェック
+                skip_explanation = request.args.get('skip_explanation', '0')
+                if skip_explanation == '1':
+                    session['topic_explained'] = True
+                
+                if 'temp_format' in session and 'temp_topic' in session:
+                    current_topic = session['temp_topic']
+                    current_format = session['temp_format']
+                else:
+                    progress = session.get('learning_progress', {
+                        'current_topic': 'SELECT',
+                        'current_format': '選択式'
+                    })
+                    current_topic = progress['current_topic']
+                    current_format = progress['current_format']
+                
+                    # topic_explained がまだで、skip_explanation でもない場合のみリダイレクト
+                    if not session.get('topic_explained'):
+                        session['topic_explained'] = True
+                        return redirect(f'/topic_explanation?topic={current_topic}')
+                    
+                    print(f"Debug - 適応的出題: Topic={current_topic}, Format={current_format}")
     else:
         current_format = request.args.get("format", FORMATS[0])
     
@@ -2144,6 +2143,7 @@ if __name__ == "__main__":
         app.run(host='0.0.0.0', port=port)
     else:
         app.run(debug=True, port=port)
+
 
 
 
