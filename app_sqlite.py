@@ -1930,34 +1930,56 @@ def practice():
                 session["current_problem"] = all_problems[idx % len(all_problems)]
                 session["problem_index"] = idx + 1
                 
-        elif "current_problem" not in session:
-            session["last_format"] = current_format
-            
-            if mode == "adaptive":
-                progress = {
-                    'current_topic': 'SELECT',
-                    'current_format': '選択式',
-                    'format_question_count': 0,
-                    'format_start_time': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                }
-                session['learning_progress'] = progress
+            elif "current_problem" not in session:
+                session["last_format"] = current_format
                 
-                if not session.get('topic_explained'):
-                    return redirect('/topic_explanation?topic=SELECT')
-                
-                select_problems = [p for p in all_problems if p['id'].startswith('SELECT_')]
-                if select_problems:
-                    selected_problem = random.choice(select_problems)
-                    session["current_problem"] = selected_problem
+                if mode == "adaptive":
+                    # ★★★ 修正：既にprogressがあればそれを使う ★★★
+                    progress = session.get('learning_progress', {
+                        'current_topic': 'SELECT',
+                        'current_format': '選択式',
+                        'format_question_count': 0,
+                        'format_start_time': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    })
                     
-                    add_completed_format('SELECT', '選択式')
+                    # ★★★ 修正：progressを上書きしない ★★★
+                    if 'learning_progress' not in session:
+                        session['learning_progress'] = progress
                     
-                    recent_problem_ids = {'SELECT': [selected_problem['id']]}
-                    session['recent_problem_ids'] = recent_problem_ids
+                    current_topic = progress['current_topic']
+                    current_format = progress['current_format']
                     
-                    print(f"Debug - 初回問題: {selected_problem['id']}")
-                else:
-                    session["current_problem"] = all_problems[0]
+                    # ★★★ 修正：topic_explainedのチェックをcurrent_topicで行う ★★★
+                    if not session.get('topic_explained'):
+                        return redirect(f'/topic_explanation?topic={current_topic}')
+                    
+                    # ★★★ 修正：current_topicに応じた問題を取得 ★★★
+                    topic_prefix_map = {
+                        'SELECT': 'SELECT_',
+                        'WHERE': 'WHERE_',
+                        'ORDERBY': 'ORDERBY_',
+                        '集約関数': 'AGG_',
+                        'GROUPBY': 'GROUPBY_',
+                        'HAVING': 'HAVING_',
+                        'JOIN': 'JOIN_',
+                        'サブクエリ': 'SUBQUERY_'
+                    }
+                    
+                    prefix = topic_prefix_map.get(current_topic, 'SELECT_')
+                    topic_problems = [p for p in all_problems if p['id'].startswith(prefix)]
+                    
+                    if topic_problems:
+                        selected_problem = random.choice(topic_problems)
+                        session["current_problem"] = selected_problem
+                        
+                        add_completed_format(current_topic, current_format)
+                        
+                        recent_problem_ids = {current_topic: [selected_problem['id']]}
+                        session['recent_problem_ids'] = recent_problem_ids
+                        
+                        print(f"Debug - 初回問題（ジャンプ後）: {selected_problem['id']}, Topic={current_topic}, Format={current_format}")
+                    else:
+                        session["current_problem"] = all_problems[0]
             elif mode == "random":
                 session["remaining_problems"] = all_problems.copy()
                 random.shuffle(session["remaining_problems"])
@@ -2148,6 +2170,7 @@ if __name__ == "__main__":
         app.run(host='0.0.0.0', port=port)
     else:
         app.run(debug=True, port=port)
+
 
 
 
