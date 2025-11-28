@@ -2127,15 +2127,11 @@ def jump_to():
     }
     session['learning_progress'] = progress
     
-    # グループ設定は既に select_group で設定済み
-    # session['enable_gpt_feedback'] と session['mode'] は保持される
-    
-    session.pop('topic_explained', None)  # 説明ページを表示する
+    session['topic_explained'] = True
     
     print(f"🚀 ジャンプ機能: {topic} - {format} にジャンプしました")
     
-    # その構文の説明ページに飛ばす
-    return redirect(f'/topic_explanation?topic={topic}')
+    return redirect('/practice?mode=adaptive')
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
@@ -2143,6 +2139,7 @@ if __name__ == "__main__":
         app.run(host='0.0.0.0', port=port)
     else:
         app.run(debug=True, port=port)
+
 
 
 
