@@ -1729,7 +1729,7 @@ def practice():
     
     if not all_problems:
         return """<h1>エラー</h1><p>問題ファイル (problems.xlsx) が見つからないか、問題が読み込めません。</p><a href='/home'>ホームに戻る</a>"""
-    
+
     mode = request.args.get("mode", session.get("mode", "random"))
     session["mode"] = mode
     
@@ -1737,13 +1737,12 @@ def practice():
     if mode == "adaptive_b":
         enable_gpt_feedback = False
         mode = "adaptive"
-        session['enable_gpt_feedback'] = False  # ← ここで保存
+        session['enable_gpt_feedback'] = False
     elif mode == "adaptive_a":
         enable_gpt_feedback = True
         mode = "adaptive"
-        session['enable_gpt_feedback'] = True  # ← ここで保存
+        session['enable_gpt_feedback'] = True
     else:
-        # セッションから取得（既に設定されている場合はそれを使う）
         enable_gpt_feedback = session.get('enable_gpt_feedback', True)
     
     if mode == "adaptive":
@@ -1825,29 +1824,27 @@ def practice():
             session["current_problem"] = selected_problem
             print(f"↩️ 元の進捗に戻りました: {current_topic} - {current_format}")
     
-            if mode == "adaptive":
-                # skip_explanation パラメータを先にチェック
-                skip_explanation = request.args.get('skip_explanation', '0')
-                if skip_explanation == '1':
-                    session['topic_explained'] = True
-                
-                if 'temp_format' in session and 'temp_topic' in session:
-                    current_topic = session['temp_topic']
-                    current_format = session['temp_format']
-                else:
-                    progress = session.get('learning_progress', {
-                        'current_topic': 'SELECT',
-                        'current_format': '選択式'
-                    })
-                    current_topic = progress['current_topic']
-                    current_format = progress['current_format']
-                
-                    # topic_explained がまだで、skip_explanation でもない場合のみリダイレクト
-                    if not session.get('topic_explained'):
-                        session['topic_explained'] = True
-                        return redirect(f'/topic_explanation?topic={current_topic}')
-                    
-                    print(f"Debug - 適応的出題: Topic={current_topic}, Format={current_format}")
+    if mode == "adaptive":
+        skip_explanation = request.args.get('skip_explanation', '0')
+        if skip_explanation == '1':
+            session['topic_explained'] = True
+        
+        if 'temp_format' in session and 'temp_topic' in session:
+            current_topic = session['temp_topic']
+            current_format = session['temp_format']
+        else:
+            progress = session.get('learning_progress', {
+                'current_topic': 'SELECT',
+                'current_format': '選択式'
+            })
+            current_topic = progress['current_topic']
+            current_format = progress['current_format']
+            
+            if not session.get('topic_explained'):
+                session['topic_explained'] = True
+                return redirect(f'/topic_explanation?topic={current_topic}')
+            
+            print(f"Debug - 適応的出題: Topic={current_topic}, Format={current_format}")
     else:
         current_format = request.args.get("format", FORMATS[0])
     
@@ -1898,110 +1895,108 @@ def practice():
         result = True
     
     else:
-        # ★★★ デバッグ：セッション状態を確認 ★★★
         print(f"🔍 practice - GET処理開始")
         print(f"   learning_progress: {session.get('learning_progress')}")
         print(f"   current_problem: {session.get('current_problem', {}).get('id', 'None')}")
 
-if request.args.get("next") == "1":
-    was_reviewing = session.get('is_reviewing', False)
-    
-    session.pop('temp_format', None)
-    session.pop('temp_topic', None)
-    session.pop('is_reviewing', None)
-    
-    if was_reviewing:
-        print("📚 復習モードを終了します")
-    
-    if mode == "adaptive" and "current_problem" in session and not was_reviewing:
-        user_id = session.get('user_id', 'unknown')
-        last_problem = session["current_problem"]
-        topic = extract_topic_from_problem_id(last_problem["id"])
-        
-        progress = session.get('learning_progress', {
-            'current_topic': 'SELECT',
-            'current_format': '選択式',
-            'format_question_count': 0,
-            'format_start_time': None
-        })
-        current_format_for_check = progress['current_format']
-        start_time = progress.get('format_start_time')
-        
-        format_question_count = progress.get('format_question_count', 0) + 1
-        progress['format_question_count'] = format_question_count
-        session['learning_progress'] = progress
-        
-        threshold = get_format_question_threshold(current_format_for_check)
+        if request.args.get("next") == "1":
+            was_reviewing = session.get('is_reviewing', False)
+            
+            session.pop('temp_format', None)
+            session.pop('temp_topic', None)
+            session.pop('is_reviewing', None)
+            
+            if was_reviewing:
+                print("📚 復習モードを終了します")
+            
+            if mode == "adaptive" and "current_problem" in session and not was_reviewing:
+                user_id = session.get('user_id', 'unknown')
+                last_problem = session["current_problem"]
+                topic = extract_topic_from_problem_id(last_problem["id"])
+                
+                progress = session.get('learning_progress', {
+                    'current_topic': 'SELECT',
+                    'current_format': '選択式',
+                    'format_question_count': 0,
+                    'format_start_time': None
+                })
+                current_format_for_check = progress['current_format']
+                start_time = progress.get('format_start_time')
+                
+                format_question_count = progress.get('format_question_count', 0) + 1
+                progress['format_question_count'] = format_question_count
+                session['learning_progress'] = progress
+                
+                threshold = get_format_question_threshold(current_format_for_check)
 
-        accuracy_data = get_recent_accuracy(user_id, topic, current_format_for_check, limit=threshold, start_time=start_time)
-        
-        print(f"🔍 形式変更の判定: Topic={topic}, Format={current_format_for_check}")
-        print(f"   この形式での回答数: {format_question_count}回 (閾値: {threshold}問)")
-        print(f"   threshold={threshold}, accuracy_data={accuracy_data}")
-        if start_time:
-            print(f"   形式開始時刻: {start_time}")
-        if accuracy_data:
-            print(f"   直近の成績: {accuracy_data['correct']}/{accuracy_data['total']}問正解 (正答率: {accuracy_data['accuracy']}%)")
-        else:
-            print(f"   まだデータなし")
-        
-        if format_question_count >= threshold and accuracy_data and accuracy_data['total'] >= threshold:
-            
-            print(f"   → 判定開始")
-            
-            if current_format_for_check == '意味説明':
-                            if accuracy_data['accuracy'] >= 70:
-                                add_completed_format(topic, '意味説明')
-                                
-                                current_index = TOPICS.index(topic) if topic in TOPICS else 0
-                                if current_index < len(TOPICS) - 1:
-                                    next_topic = TOPICS[current_index + 1]
-                                    next_format = '選択式'
-                                    update_learning_progress(user_id, next_topic, next_format)
-                                    current_format = next_format
-                                    
-                                    session.pop('topic_explained', None)
-                                    
-                                    print(f"✅ 次の構文へ: {topic} → {next_topic} (正答率: {accuracy_data['accuracy']}%)")
-                                else:
-                                    print(f"✅ 全ての構文を完了しました！")
-                            else:
-                                next_format = '記述式'
-                                update_learning_progress(user_id, topic, next_format)
-                                current_format = next_format
-                                print(f"✅ 下位形式へ: {current_format_for_check} → {next_format} (正答率: {accuracy_data['accuracy']}%)")
-                        else:
-                            next_format = get_next_format(current_format_for_check, accuracy_data['accuracy'])
-                            
-                            print(f"   → 次の形式候補: {next_format}")
-                            
-                            if next_format != current_format_for_check:
-                                add_completed_format(topic, next_format)
-                                
-                                update_learning_progress(user_id, topic, next_format)
-                                current_format = next_format
-                                print(f"✅ 形式変更: {current_format_for_check} → {next_format} (正答率: {accuracy_data['accuracy']}%)")
+                accuracy_data = get_recent_accuracy(user_id, topic, current_format_for_check, limit=threshold, start_time=start_time)
+                
+                print(f"🔍 形式変更の判定: Topic={topic}, Format={current_format_for_check}")
+                print(f"   この形式での回答数: {format_question_count}回 (閾値: {threshold}問)")
+                print(f"   threshold={threshold}, accuracy_data={accuracy_data}")
+                if start_time:
+                    print(f"   形式開始時刻: {start_time}")
+                if accuracy_data:
+                    print(f"   直近の成績: {accuracy_data['correct']}/{accuracy_data['total']}問正解 (正答率: {accuracy_data['accuracy']}%)")
+                else:
+                    print(f"   まだデータなし")
+                
+                if format_question_count >= threshold and accuracy_data and accuracy_data['total'] >= threshold:
                     
-                    # ★★★ ここに追加：進捗をDBに保存 ★★★
-                    save_learning_progress(
-                        user_id,
-                        progress.get('current_topic', 'SELECT'),
-                        progress.get('current_format', '選択式'),
-                        progress.get('format_question_count', 0),
-                        progress.get('format_start_time')
-                    )
-                
-                # ★★★ インデントを1段階戻す（スペース4つ減らす） ★★★
-                if mode == "adaptive" and not session.get('topic_explained') and not session.get('is_reviewing'):
-                    progress = session.get('learning_progress', {})
-                    current_topic = progress.get('current_topic', 'SELECT')
-                    return redirect(f'/topic_explanation?topic={current_topic}')
-                
-                if mode == "adaptive":
-                    if session.get('is_reviewing'):
-                        topic = session.get('temp_topic', 'SELECT')
-                        current_format = session.get('temp_format', '選択式')
+                    print(f"   → 判定開始")
+                    
+                    if current_format_for_check == '意味説明':
+                        if accuracy_data['accuracy'] >= 70:
+                            add_completed_format(topic, '意味説明')
+                            
+                            current_index = TOPICS.index(topic) if topic in TOPICS else 0
+                            if current_index < len(TOPICS) - 1:
+                                next_topic = TOPICS[current_index + 1]
+                                next_format = '選択式'
+                                update_learning_progress(user_id, next_topic, next_format)
+                                current_format = next_format
+                                
+                                session.pop('topic_explained', None)
+                                
+                                print(f"✅ 次の構文へ: {topic} → {next_topic} (正答率: {accuracy_data['accuracy']}%)")
+                            else:
+                                print(f"✅ 全ての構文を完了しました！")
+                        else:
+                            next_format = '記述式'
+                            update_learning_progress(user_id, topic, next_format)
+                            current_format = next_format
+                            print(f"✅ 下位形式へ: {current_format_for_check} → {next_format} (正答率: {accuracy_data['accuracy']}%)")
                     else:
+                        next_format = get_next_format(current_format_for_check, accuracy_data['accuracy'])
+                        
+                        print(f"   → 次の形式候補: {next_format}")
+                        
+                        if next_format != current_format_for_check:
+                            add_completed_format(topic, next_format)
+                            
+                            update_learning_progress(user_id, topic, next_format)
+                            current_format = next_format
+                            print(f"✅ 形式変更: {current_format_for_check} → {next_format} (正答率: {accuracy_data['accuracy']}%)")
+                
+                # ★★★ 進捗をDBに保存 ★★★
+                save_learning_progress(
+                    user_id,
+                    progress.get('current_topic', 'SELECT'),
+                    progress.get('current_format', '選択式'),
+                    progress.get('format_question_count', 0),
+                    progress.get('format_start_time')
+                )
+            
+            if mode == "adaptive" and not session.get('topic_explained') and not session.get('is_reviewing'):
+                progress = session.get('learning_progress', {})
+                current_topic = progress.get('current_topic', 'SELECT')
+                return redirect(f'/topic_explanation?topic={current_topic}')
+            
+            if mode == "adaptive":
+                if session.get('is_reviewing'):
+                    topic = session.get('temp_topic', 'SELECT')
+                    current_format = session.get('temp_format', '選択式')
+                else:
                     progress = session.get('learning_progress', {
                         'current_topic': 'SELECT',
                         'current_format': '選択式',
@@ -2024,7 +2019,7 @@ if request.args.get("next") == "1":
                     'HAVING': 'HAVING_',
                     'JOIN': 'JOIN_',
                     'サブクエリ': 'SUBQUERY_'
-                    }
+                }
                 
                 prefix = topic_prefix_map.get(topic, 'SELECT_')
                 topic_problems = [p for p in all_problems if p['id'].startswith(prefix)]
@@ -2074,12 +2069,10 @@ if request.args.get("next") == "1":
                 session["current_problem"] = all_problems[idx % len(all_problems)]
                 session["problem_index"] = idx + 1
         
-        # ★★★ ここを修正：elif → if に変更 ★★★
         if "current_problem" not in session:
             session["last_format"] = current_format
             
             if mode == "adaptive":
-                # 既にprogressがあればそれを使う
                 progress = session.get('learning_progress', {
                     'current_topic': 'SELECT',
                     'current_format': '選択式',
@@ -2087,7 +2080,6 @@ if request.args.get("next") == "1":
                     'format_start_time': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 })
                 
-                # progressを上書きしない
                 if 'learning_progress' not in session:
                     session['learning_progress'] = progress
                 
@@ -2097,7 +2089,6 @@ if request.args.get("next") == "1":
                 if not session.get('topic_explained'):
                     return redirect(f'/topic_explanation?topic={current_topic}')
                 
-                # current_topicに応じた問題を取得
                 topic_prefix_map = {
                     'SELECT': 'SELECT_',
                     'WHERE': 'WHERE_',
@@ -2132,7 +2123,6 @@ if request.args.get("next") == "1":
                 session["problem_index"] = 1
                 session["current_problem"] = all_problems[0]
         
-        # ★★★ ここを修正：elif → if に変更 ★★★
         if request.args.get("format") and session.get("last_format") != current_format:
             session["last_format"] = current_format
 
@@ -2333,6 +2323,7 @@ if __name__ == "__main__":
         app.run(host='0.0.0.0', port=port)
     else:
         app.run(debug=True, port=port)
+
 
 
 
