@@ -46,7 +46,7 @@ def init_db():
     cursor = conn.cursor()
     
     if DB_TYPE == "postgresql":
-        # PostgreSQL用のCREATE TABLE
+        # logsテーブル（既存）
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS logs (
                 id SERIAL PRIMARY KEY,
@@ -60,6 +60,18 @@ def init_db():
                 sql_feedback TEXT,
                 meaning_result TEXT,
                 meaning_feedback TEXT
+            )
+        ''')
+        
+        # ★★★ 新規：学習進捗テーブル ★★★
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS learning_progress (
+                user_id TEXT PRIMARY KEY,
+                current_topic TEXT NOT NULL,
+                current_format TEXT NOT NULL,
+                format_question_count INTEGER DEFAULT 0,
+                format_start_time TEXT,
+                last_updated TEXT NOT NULL
             )
         ''')
     else:
@@ -77,6 +89,18 @@ def init_db():
                 sql_feedback TEXT,
                 meaning_result TEXT,
                 meaning_feedback TEXT
+            )
+        ''')
+        
+        # ★★★ SQLite用：学習進捗テーブル ★★★
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS learning_progress (
+                user_id TEXT PRIMARY KEY,
+                current_topic TEXT NOT NULL,
+                current_format TEXT NOT NULL,
+                format_question_count INTEGER DEFAULT 0,
+                format_start_time TEXT,
+                last_updated TEXT NOT NULL
             )
         ''')
         
@@ -274,6 +298,79 @@ WHERE department_id IN (SELECT id FROM departments WHERE location = 'Tokyo');</p
 <p>→ 東京にある部署に所属する従業員を取得します</p>
 '''
 }
+
+def save_learning_progress(user_id, topic, format, question_count, start_time):
+    """学習進捗をDBに保存"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        last_updated = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        if DB_TYPE == "postgresql":
+            cursor.execute('''
+                INSERT INTO learning_progress (user_id, current_topic, current_format, 
+                                              format_question_count, format_start_time, last_updated)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                ON CONFLICT (user_id) 
+                DO UPDATE SET 
+                    current_topic = EXCLUDED.current_topic,
+                    current_format = EXCLUDED.current_format,
+                    format_question_count = EXCLUDED.format_question_count,
+                    format_start_time = EXCLUDED.format_start_time,
+                    last_updated = EXCLUDED.last_updated
+            ''', (user_id, topic, format, question_count, start_time, last_updated))
+        else:
+            # SQLite用
+            cursor.execute('''
+                INSERT OR REPLACE INTO learning_progress 
+                (user_id, current_topic, current_format, format_question_count, 
+                 format_start_time, last_updated)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (user_id, topic, format, question_count, start_time, last_updated))
+        
+        conn.commit()
+        conn.close()
+        print(f"✅ 進捗保存: {user_id} - {topic} - {format} ({question_count}問)")
+        
+    except Exception as e:
+        print(f"❌ 進捗保存エラー: {e}")
+        import traceback
+        traceback.print_exc()
+
+def load_learning_progress(user_id):
+    """学習進捗をDBから読み込む"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        placeholder = '%s' if DB_TYPE == "postgresql" else '?'
+        cursor.execute(f'''
+            SELECT current_topic, current_format, format_question_count, 
+                   format_start_time, last_updated
+            FROM learning_progress
+            WHERE user_id = {placeholder}
+        ''', (user_id,))
+        
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row:
+            return {
+                'current_topic': row[0],
+                'current_format': row[1],
+                'format_question_count': row[2],
+                'format_start_time': row[3],
+                'last_updated': row[4]
+            }
+        else:
+            return None
+            
+    except Exception as e:
+        print(f"❌ 進捗読み込みエラー: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
 
 def get_time_elapsed():
     """学習時間を正確に計測（ブラウザを閉じても対応）"""
@@ -1601,15 +1698,24 @@ HTML_TEMPLATE = """<!doctype html><html><head><title>SQL学習支援システム
 def practice():
     if 'user_id' not in session:
         return redirect('/')
-        # ★★★ デバッグ情報を追加 ★★★
-        print("=" * 50)
-        print("🔍 practice関数開始")
-        print(f"   method: {request.method}")
-        print(f"   args: {dict(request.args)}")
-        print(f"   session['learning_progress']: {session.get('learning_progress')}")
-        print(f"   session['topic_explained']: {session.get('topic_explained')}")
-        print(f"   session.get('current_problem'): {session.get('current_problem', {}).get('id', 'None')}")
-        print("=" * 50)
+    
+    # ★★★ デバッグ情報を追加 ★★★
+    print("=" * 50)
+    print("🔍 practice関数開始")
+    print(f"   method: {request.method}")
+    print(f"   args: {dict(request.args)}")
+    print(f"   session['learning_progress']: {session.get('learning_progress')}")
+    print(f"   session['topic_explained']: {session.get('topic_explained')}")
+    print(f"   session.get('current_problem'): {session.get('current_problem', {}).get('id', 'None')}")
+    print("=" * 50)
+    
+    # ★★★ 新規：DBから進捗を復元 ★★★
+    user_id = session.get('user_id')
+    if 'learning_progress' not in session:
+        db_progress = load_learning_progress(user_id)
+        if db_progress:
+            session['learning_progress'] = db_progress
+            print(f"✅ DBから進捗を復元: {db_progress['current_topic']} - {db_progress['current_format']}")
     
     time_elapsed = get_time_elapsed()
     
@@ -1623,7 +1729,7 @@ def practice():
     
     if not all_problems:
         return """<h1>エラー</h1><p>問題ファイル (problems.xlsx) が見つからないか、問題が読み込めません。</p><a href='/home'>ホームに戻る</a>"""
-
+    
     mode = request.args.get("mode", session.get("mode", "random"))
     session["mode"] = mode
     
@@ -2207,6 +2313,7 @@ if __name__ == "__main__":
         app.run(host='0.0.0.0', port=port)
     else:
         app.run(debug=True, port=port)
+
 
 
 
