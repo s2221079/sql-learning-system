@@ -1578,6 +1578,15 @@ HTML_TEMPLATE = """<!doctype html><html><head><title>SQL学習支援システム
 def practice():
     if 'user_id' not in session:
         return redirect('/')
+        # ★★★ デバッグ情報を追加 ★★★
+        print("=" * 50)
+        print("🔍 practice関数開始")
+        print(f"   method: {request.method}")
+        print(f"   args: {dict(request.args)}")
+        print(f"   session['learning_progress']: {session.get('learning_progress')}")
+        print(f"   session['topic_explained']: {session.get('topic_explained')}")
+        print(f"   session.get('current_problem'): {session.get('current_problem', {}).get('id', 'None')}")
+        print("=" * 50)
     
     time_elapsed = get_time_elapsed()
     
@@ -2139,6 +2148,7 @@ if __name__ == "__main__":
         app.run(host='0.0.0.0', port=port)
     else:
         app.run(debug=True, port=port)
+
 
 
 
