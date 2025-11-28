@@ -1769,6 +1769,11 @@ def practice():
         result = True
     
     else:
+        # ★★★ デバッグ：セッション状態を確認 ★★★
+        print(f"🔍 practice - GET処理開始")
+        print(f"   learning_progress: {session.get('learning_progress')}")
+        print(f"   current_problem: {session.get('current_problem', {}).get('id', 'None')}")
+
         if request.args.get("next") == "1":
             was_reviewing = session.get('is_reviewing', False)
             
@@ -2150,7 +2155,14 @@ def jump_to():
     topic = request.args.get('topic', 'SELECT')
     format = request.args.get('format', '選択式')
     
-    # 学習進捗を強制的に設定
+    # ★★★ 修正：古いセッションデータをクリア ★★★
+    session.pop('learning_progress', None)
+    session.pop('current_problem', None)
+    session.pop('recent_problem_ids', None)
+    session.pop('completed_formats', None)
+    session.pop('topic_explained', None)
+    
+    # 学習進捗を新しく設定
     progress = {
         'current_topic': topic,
         'current_format': format,
@@ -2158,11 +2170,12 @@ def jump_to():
         'format_start_time': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
     session['learning_progress'] = progress
-    
-    session['topic_explained'] = True
+    session['topic_explained'] = True  # 説明ページをスキップ
     
     print(f"🚀 ジャンプ機能: {topic} - {format} にジャンプしました")
+    print(f"   設定した進捗: {progress}")
     
+    # 直接 practice に飛ぶ
     return redirect('/practice?mode=adaptive')
 
 if __name__ == "__main__":
@@ -2171,6 +2184,7 @@ if __name__ == "__main__":
         app.run(host='0.0.0.0', port=port)
     else:
         app.run(debug=True, port=port)
+
 
 
 
