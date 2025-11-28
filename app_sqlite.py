@@ -1181,7 +1181,49 @@ def history():
     except Exception as e:
         import traceback
         return f"""<h1>学習履歴</h1><p>履歴の読み込み中にエラーが発生しました: {e}</p><pre>{traceback.format_exc()}</pre><br><a href='/home'>ホームに戻る</a>"""
+
+@app.route("/check_sqlite")
+def check_sqlite():
+    import os
+    
+    sqlite_file = "学習履歴.db"
+    exists = os.path.exists(sqlite_file)
+    
+    if exists:
+        import sqlite3
+        conn = sqlite3.connect(sqlite_file)
+        cursor = conn.cursor()
         
+        # ユーザー別のログ数を確認
+        cursor.execute("SELECT user_id, COUNT(*) FROM logs GROUP BY user_id")
+        users = cursor.fetchall()
+        conn.close()
+        
+        html = f"""
+        <h1>SQLiteファイル発見！</h1>
+        <p>ファイルパス: {sqlite_file}</p>
+        <h2>ユーザー別のログ数:</h2>
+        <ul>
+        """
+        
+        for user_id, count in users:
+            html += f"<li>{user_id}: {count}件</li>"
+        
+        html += """
+        </ul>
+        <p><a href='/migrate_sqlite_to_postgres'>⚠️ PostgreSQLに移行する</a></p>
+        <br><a href='/home'>ホームに戻る</a>
+        """
+        
+        return html
+    else:
+        return f"""
+        <h1>❌ SQLiteファイルが見つかりません</h1>
+        <p>ファイルパス: {sqlite_file}</p>
+        <p>Renderの再起動によりファイルが削除された可能性があります。</p>
+        <br><a href='/home'>ホームに戻る</a>
+        """
+
 @app.route("/stats")
 def stats():
     if 'user_id' not in session:
@@ -1932,6 +1974,7 @@ if __name__ == "__main__":
         app.run(host='0.0.0.0', port=port)
     else:
         app.run(debug=True, port=port)
+
 
 
 
