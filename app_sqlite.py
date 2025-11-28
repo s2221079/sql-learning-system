@@ -35,7 +35,7 @@ else:
     DB_FILE = "学習履歴.db"
     
     def get_db_connection():
-        return sqlite3.connect(DB_FILE)
+        return get_db_connection()
     
     DB_TYPE = "sqlite"
     print("✅ SQLite接続モード")
@@ -673,50 +673,87 @@ def get_user_statistics(user_id):
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        cursor.execute('SELECT COUNT(*) FROM logs WHERE user_id = ?', (user_id,))
+        if DB_TYPE == "postgresql":
+            cursor.execute('SELECT * FROM logs WHERE user_id = %s', (user_id,))
+        else:
+            cursor.execute('SELECT * FROM logs WHERE user_id = ?', (user_id,))
         total_count = cursor.fetchone()[0]
         
         if total_count == 0:
             conn.close()
             return None
         
-        cursor.execute('''
-            SELECT COUNT(*) FROM logs 
-            WHERE user_id = ? 
-            AND (sql_result = '正解 ✅' OR meaning_result = '正解 ✅')
-        ''', (user_id,))
+        if DB_TYPE == "postgresql":
+            cursor.execute('''
+                SELECT COUNT(*) FROM logs 
+                WHERE user_id = %s 
+                AND (sql_result = '正解 ✅' OR meaning_result = '正解 ✅')
+            ''', (user_id,))
+        else:
+            cursor.execute('''
+                SELECT COUNT(*) FROM logs 
+                WHERE user_id = ? 
+                AND (sql_result = '正解 ✅' OR meaning_result = '正解 ✅')
+            ''', (user_id,))
         correct_count = cursor.fetchone()[0]
         
-        cursor.execute('''
-            SELECT COUNT(*) FROM logs 
-            WHERE user_id = ? 
-            AND (sql_result = '部分正解 ⚠️' OR meaning_result = '部分正解 ⚠️')
-        ''', (user_id,))
+        if DB_TYPE == "postgresql":
+            cursor.execute('''
+                SELECT COUNT(*) FROM logs 
+                WHERE user_id = %s 
+                AND (sql_result = '部分正解 ⚠️' OR meaning_result = '部分正解 ⚠️')
+            ''', (user_id,))
+        else:
+            cursor.execute('''
+                SELECT COUNT(*) FROM logs 
+                WHERE user_id = ? 
+                AND (sql_result = '部分正解 ⚠️' OR meaning_result = '部分正解 ⚠️')
+            ''', (user_id,))
         partial_count = cursor.fetchone()[0]
         
-        cursor.execute('''
-            SELECT COUNT(*) FROM logs 
-            WHERE user_id = ? 
-            AND (sql_result = '不正解 ❌' OR meaning_result = '不正解 ❌')
-        ''', (user_id,))
+        if DB_TYPE == "postgresql":
+            cursor.execute('''
+                SELECT COUNT(*) FROM logs 
+                WHERE user_id = %s 
+                AND (sql_result = '不正解 ❌' OR meaning_result = '不正解 ❌')
+            ''', (user_id,))
+        else:
+            cursor.execute('''
+                SELECT COUNT(*) FROM logs 
+                WHERE user_id = ? 
+                AND (sql_result = '不正解 ❌' OR meaning_result = '不正解 ❌')
+            ''', (user_id,))
         incorrect_count = cursor.fetchone()[0]
         
         overall_accuracy = (correct_count / total_count * 100) if total_count > 0 else 0
         
         format_stats = {}
         for format_name in ['選択式', '穴埋め式', '記述式', '意味説明']:
-            cursor.execute('''
-                SELECT COUNT(*) FROM logs 
-                WHERE user_id = ? AND format = ?
-            ''', (user_id, format_name))
-            format_total = cursor.fetchone()[0]
-            
-            if format_total > 0:
+            if DB_TYPE == "postgresql":
+                cursor.execute('''
+                    SELECT COUNT(*) FROM logs 
+                    WHERE user_id = %s AND format = %s
+                ''', (user_id, format_name))
+            else:
                 cursor.execute('''
                     SELECT COUNT(*) FROM logs 
                     WHERE user_id = ? AND format = ?
-                    AND (sql_result = '正解 ✅' OR meaning_result = '正解 ✅')
                 ''', (user_id, format_name))
+            format_total = cursor.fetchone()[0]
+            
+            if format_total > 0:
+                if DB_TYPE == "postgresql":
+                    cursor.execute('''
+                        SELECT COUNT(*) FROM logs 
+                        WHERE user_id = %s AND format = %s
+                        AND (sql_result = '正解 ✅' OR meaning_result = '正解 ✅')
+                    ''', (user_id, format_name))
+                else:
+                    cursor.execute('''
+                        SELECT COUNT(*) FROM logs 
+                        WHERE user_id = ? AND format = ?
+                        AND (sql_result = '正解 ✅' OR meaning_result = '正解 ✅')
+                    ''', (user_id, format_name))
                 format_correct = cursor.fetchone()[0]
                 
                 format_accuracy = (format_correct / format_total * 100)
@@ -732,13 +769,22 @@ def get_user_statistics(user_id):
                     'accuracy': 0
                 }
         
-        cursor.execute('''
-            SELECT timestamp, problem_id, sql_result, meaning_result 
-            FROM logs 
-            WHERE user_id = ? 
-            ORDER BY timestamp DESC 
-            LIMIT 10
-        ''', (user_id,))
+        if DB_TYPE == "postgresql":
+            cursor.execute('''
+                SELECT timestamp, problem_id, sql_result, meaning_result 
+                FROM logs 
+                WHERE user_id = %s 
+                ORDER BY timestamp DESC 
+                LIMIT 10
+            ''', (user_id,))
+        else:
+            cursor.execute('''
+                SELECT timestamp, problem_id, sql_result, meaning_result 
+                FROM logs 
+                WHERE user_id = ? 
+                ORDER BY timestamp DESC 
+                LIMIT 10
+            ''', (user_id,))
         recent_logs = cursor.fetchall()
         
         conn.close()
@@ -754,12 +800,14 @@ def get_user_statistics(user_id):
         }
     except Exception as e:
         print(f"統計情報取得エラー: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 def get_detailed_statistics(user_id):
     """構文別・形式別の詳細統計を取得"""
     try:
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         topics = ['SELECT', 'WHERE', 'ORDERBY', '集約関数', 'GROUPBY', 'HAVING', 'JOIN', 'サブクエリ']
@@ -857,7 +905,7 @@ def get_recent_accuracy(user_id, topic, format, limit=5, start_time=None):
     prefix = topic_prefix_map.get(topic, f"{topic}_")
     
     try:
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         if start_time:
@@ -949,7 +997,7 @@ def get_topic_overall_accuracy(user_id, topic, format):
     prefix = topic_prefix_map.get(topic, f"{topic}_")
     
     try:
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         cursor.execute('''
@@ -1105,9 +1153,14 @@ def history():
     user_id = session['user_id']
     
     try:
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()  # ← 修正
         cursor = conn.cursor()
-        cursor.execute('SELECT * FROM logs WHERE user_id = ? ORDER BY timestamp DESC', (user_id,))
+        
+        if DB_TYPE == "postgresql":
+            cursor.execute('SELECT * FROM logs WHERE user_id = %s ORDER BY timestamp DESC', (user_id,))
+        else:
+            cursor.execute('SELECT * FROM logs WHERE user_id = ? ORDER BY timestamp DESC', (user_id,))
+        
         rows = cursor.fetchall()
         conn.close()
         
@@ -1126,8 +1179,9 @@ def history():
         table_html += """</table><br><a href='/home'>ホームに戻る</a></div>"""
         return table_html
     except Exception as e:
-        return f"""<h1>学習履歴</h1><p>履歴の読み込み中にエラーが発生しました: {e}</p><br><a href='/home'>ホームに戻る</a>"""
-
+        import traceback
+        return f"""<h1>学習履歴</h1><p>履歴の読み込み中にエラーが発生しました: {e}</p><pre>{traceback.format_exc()}</pre><br><a href='/home'>ホームに戻る</a>"""
+        
 @app.route("/stats")
 def stats():
     if 'user_id' not in session:
@@ -1878,6 +1932,7 @@ if __name__ == "__main__":
         app.run(host='0.0.0.0', port=port)
     else:
         app.run(debug=True, port=port)
+
 
 
 
