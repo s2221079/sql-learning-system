@@ -1308,10 +1308,22 @@ def export_csv():
     from io import StringIO
     from flask import Response
     
+    user_id = session.get('user_id')
+    
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute('SELECT * FROM logs ORDER BY timestamp DESC')
+        
+        # ★★★ 修正：全データではなくユーザーIDでフィルタ ★★★
+        placeholder = '%s' if DB_TYPE == "postgresql" else '?'
+        cursor.execute(f'''
+            SELECT user_id, timestamp, problem_id, format, user_sql, user_explanation,
+                   sql_result, sql_feedback, meaning_result, meaning_feedback
+            FROM logs 
+            WHERE user_id = {placeholder}
+            ORDER BY timestamp DESC
+        ''', (user_id,))
+        
         rows = cursor.fetchall()
         
         # カラム名を取得
@@ -1322,21 +1334,32 @@ def export_csv():
         
         conn.close()
         
-        # CSV作成
+        # ★★★ UTF-8 with BOM でエクスポート（Excelで自動認識） ★★★
         si = StringIO()
         writer = csv.writer(si)
-        writer.writerow(columns)
+        
+        # ヘッダー（日本語）
+        writer.writerow(['ユーザーID', '日時', '問題ID', '形式', 'ユーザーSQL', 
+                        'ユーザー説明', 'SQL結果', 'SQLフィードバック', 
+                        '意味結果', '意味フィードバック'])
+        
+        # データ
         writer.writerows(rows)
         
+        # UTF-8 with BOM に変換
         output = si.getvalue()
+        bom = '\ufeff'
+        output_with_bom = bom + output
         
         return Response(
-            output,
-            mimetype="text/csv",
-            headers={"Content-Disposition": "attachment;filename=learning_history.csv"}
+            output_with_bom.encode('utf-8'),
+            mimetype="text/csv; charset=utf-8",
+            headers={"Content-Disposition": f"attachment;filename=learning_history_{user_id}.csv"}
         )
+        
     except Exception as e:
-        return f"エラー: {e}"
+        import traceback
+        return f"エラー: {e}<br><pre>{traceback.format_exc()}</pre>"
 
 @app.route("/")
 def home():
@@ -2184,6 +2207,7 @@ if __name__ == "__main__":
         app.run(host='0.0.0.0', port=port)
     else:
         app.run(debug=True, port=port)
+
 
 
 
