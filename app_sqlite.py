@@ -810,6 +810,8 @@ def get_detailed_statistics(user_id):
         conn = get_db_connection()
         cursor = conn.cursor()
         
+        placeholder = '%s' if DB_TYPE == "postgresql" else '?'
+        
         topics = ['SELECT', 'WHERE', 'ORDERBY', '集約関数', 'GROUPBY', 'HAVING', 'JOIN', 'サブクエリ']
         formats = ['選択式', '穴埋め式', '記述式', '意味説明']
         
@@ -832,16 +834,16 @@ def get_detailed_statistics(user_id):
             prefix = topic_prefix_map.get(topic, f"{topic}_")
             
             for format_name in formats:
-                cursor.execute('''
+                cursor.execute(f'''
                     SELECT COUNT(*) FROM logs 
-                    WHERE user_id = ? AND problem_id LIKE ? AND format = ?
+                    WHERE user_id = {placeholder} AND problem_id LIKE {placeholder} AND format = {placeholder}
                 ''', (user_id, f"{prefix}%", format_name))
                 total = cursor.fetchone()[0]
                 
                 if total > 0:
-                    cursor.execute('''
+                    cursor.execute(f'''
                         SELECT COUNT(*) FROM logs 
-                        WHERE user_id = ? AND problem_id LIKE ? AND format = ?
+                        WHERE user_id = {placeholder} AND problem_id LIKE {placeholder} AND format = {placeholder}
                         AND (sql_result = '正解 ✅' OR meaning_result = '正解 ✅')
                     ''', (user_id, f"{prefix}%", format_name))
                     correct = cursor.fetchone()[0]
@@ -863,6 +865,8 @@ def get_detailed_statistics(user_id):
         return detailed_stats
     except Exception as e:
         print(f"詳細統計取得エラー: {e}")
+        import traceback
+        traceback.print_exc()
         return {}
 
 def is_test_mode():
@@ -882,7 +886,6 @@ def get_format_question_threshold(format=None):
         return 5  # 選択式・穴埋め式は5問
 
 def get_recent_accuracy(user_id, topic, format, limit=5, start_time=None):
-    # ↓↓↓ ここを修正 ↓↓↓
     # テストモード、または形式に応じたlimitを設定
     if is_test_mode():
         limit = 2
@@ -908,21 +911,23 @@ def get_recent_accuracy(user_id, topic, format, limit=5, start_time=None):
         conn = get_db_connection()
         cursor = conn.cursor()
         
+        placeholder = '%s' if DB_TYPE == "postgresql" else '?'
+        
         if start_time:
-            cursor.execute('''
+            cursor.execute(f'''
                 SELECT sql_result, meaning_result 
                 FROM logs 
-                WHERE user_id = ? AND problem_id LIKE ? AND format = ? AND timestamp >= ?
+                WHERE user_id = {placeholder} AND problem_id LIKE {placeholder} AND format = {placeholder} AND timestamp >= {placeholder}
                 ORDER BY timestamp DESC 
-                LIMIT ?
+                LIMIT {placeholder}
             ''', (user_id, f"{prefix}%", format, start_time, limit))
         else:
-            cursor.execute('''
+            cursor.execute(f'''
                 SELECT sql_result, meaning_result 
                 FROM logs 
-                WHERE user_id = ? AND problem_id LIKE ? AND format = ?
+                WHERE user_id = {placeholder} AND problem_id LIKE {placeholder} AND format = {placeholder}
                 ORDER BY timestamp DESC 
-                LIMIT ?
+                LIMIT {placeholder}
             ''', (user_id, f"{prefix}%", format, limit))
         
         results = cursor.fetchall()
@@ -944,6 +949,8 @@ def get_recent_accuracy(user_id, topic, format, limit=5, start_time=None):
         }
     except Exception as e:
         print(f"正答率計算エラー: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 def get_next_format(current_format, accuracy):
@@ -1000,10 +1007,12 @@ def get_topic_overall_accuracy(user_id, topic, format):
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        cursor.execute('''
+        placeholder = '%s' if DB_TYPE == "postgresql" else '?'
+        
+        cursor.execute(f'''
             SELECT sql_result, meaning_result 
             FROM logs 
-            WHERE user_id = ? AND problem_id LIKE ? AND format = ?
+            WHERE user_id = {placeholder} AND problem_id LIKE {placeholder} AND format = {placeholder}
             ORDER BY timestamp DESC
         ''', (user_id, f"{prefix}%", format))
         
@@ -1026,6 +1035,8 @@ def get_topic_overall_accuracy(user_id, topic, format):
         }
     except Exception as e:
         print(f"正答率計算エラー: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 def get_completed_formats(user_id):
@@ -1974,6 +1985,7 @@ if __name__ == "__main__":
         app.run(host='0.0.0.0', port=port)
     else:
         app.run(debug=True, port=port)
+
 
 
 
