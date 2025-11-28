@@ -1950,57 +1950,58 @@ if request.args.get("next") == "1":
             print(f"   → 判定開始")
             
             if current_format_for_check == '意味説明':
-                if accuracy_data['accuracy'] >= 70:
-                    add_completed_format(topic, '意味説明')
+                            if accuracy_data['accuracy'] >= 70:
+                                add_completed_format(topic, '意味説明')
+                                
+                                current_index = TOPICS.index(topic) if topic in TOPICS else 0
+                                if current_index < len(TOPICS) - 1:
+                                    next_topic = TOPICS[current_index + 1]
+                                    next_format = '選択式'
+                                    update_learning_progress(user_id, next_topic, next_format)
+                                    current_format = next_format
+                                    
+                                    session.pop('topic_explained', None)
+                                    
+                                    print(f"✅ 次の構文へ: {topic} → {next_topic} (正答率: {accuracy_data['accuracy']}%)")
+                                else:
+                                    print(f"✅ 全ての構文を完了しました！")
+                            else:
+                                next_format = '記述式'
+                                update_learning_progress(user_id, topic, next_format)
+                                current_format = next_format
+                                print(f"✅ 下位形式へ: {current_format_for_check} → {next_format} (正答率: {accuracy_data['accuracy']}%)")
+                        else:
+                            next_format = get_next_format(current_format_for_check, accuracy_data['accuracy'])
+                            
+                            print(f"   → 次の形式候補: {next_format}")
+                            
+                            if next_format != current_format_for_check:
+                                add_completed_format(topic, next_format)
+                                
+                                update_learning_progress(user_id, topic, next_format)
+                                current_format = next_format
+                                print(f"✅ 形式変更: {current_format_for_check} → {next_format} (正答率: {accuracy_data['accuracy']}%)")
                     
-                    current_index = TOPICS.index(topic) if topic in TOPICS else 0
-                    if current_index < len(TOPICS) - 1:
-                        next_topic = TOPICS[current_index + 1]
-                        next_format = '選択式'
-                        update_learning_progress(user_id, next_topic, next_format)
-                        current_format = next_format
-                        
-                        session.pop('topic_explained', None)
-                        
-                        print(f"✅ 次の構文へ: {topic} → {next_topic} (正答率: {accuracy_data['accuracy']}%)")
+                    # ★★★ ここに追加：進捗をDBに保存 ★★★
+                    save_learning_progress(
+                        user_id,
+                        progress.get('current_topic', 'SELECT'),
+                        progress.get('current_format', '選択式'),
+                        progress.get('format_question_count', 0),
+                        progress.get('format_start_time')
+                    )
+                
+                # ★★★ インデントを1段階戻す（スペース4つ減らす） ★★★
+                if mode == "adaptive" and not session.get('topic_explained') and not session.get('is_reviewing'):
+                    progress = session.get('learning_progress', {})
+                    current_topic = progress.get('current_topic', 'SELECT')
+                    return redirect(f'/topic_explanation?topic={current_topic}')
+                
+                if mode == "adaptive":
+                    if session.get('is_reviewing'):
+                        topic = session.get('temp_topic', 'SELECT')
+                        current_format = session.get('temp_format', '選択式')
                     else:
-                        print(f"✅ 全ての構文を完了しました！")
-                else:
-                    next_format = '記述式'
-                    update_learning_progress(user_id, topic, next_format)
-                    current_format = next_format
-                    print(f"✅ 下位形式へ: {current_format_for_check} → {next_format} (正答率: {accuracy_data['accuracy']}%)")
-            else:
-                next_format = get_next_format(current_format_for_check, accuracy_data['accuracy'])
-                
-                print(f"   → 次の形式候補: {next_format}")
-                
-                if next_format != current_format_for_check:
-                    add_completed_format(topic, next_format)
-                    
-                    update_learning_progress(user_id, topic, next_format)
-                    current_format = next_format
-                    print(f"✅ 形式変更: {current_format_for_check} → {next_format} (正答率: {accuracy_data['accuracy']}%)")
-        
-        # ★★★ ここに追加：進捗をDBに保存 ★★★
-        save_learning_progress(
-            user_id,
-            progress.get('current_topic', 'SELECT'),
-            progress.get('current_format', '選択式'),
-            progress.get('format_question_count', 0),
-            progress.get('format_start_time')
-        )
-            
-            if mode == "adaptive" and not session.get('topic_explained') and not session.get('is_reviewing'):
-                progress = session.get('learning_progress', {})
-                current_topic = progress.get('current_topic', 'SELECT')
-                return redirect(f'/topic_explanation?topic={current_topic}')
-            
-            if mode == "adaptive":
-                if session.get('is_reviewing'):
-                    topic = session.get('temp_topic', 'SELECT')
-                    current_format = session.get('temp_format', '選択式')
-                else:
                     progress = session.get('learning_progress', {
                         'current_topic': 'SELECT',
                         'current_format': '選択式',
@@ -2332,6 +2333,7 @@ if __name__ == "__main__":
         app.run(host='0.0.0.0', port=port)
     else:
         app.run(debug=True, port=port)
+
 
 
 
