@@ -976,11 +976,8 @@ def get_format_question_threshold(format=None):
     if is_test_mode():
         return 2
     
-    # 通常モード
-    if format in ['記述式', '意味説明']:
-        return 3  # 記述式・意味説明は3問
-    else:
-        return 5  # 選択式・穴埋め式は5問
+    # 通常モード - 全ての形式で5問に統一
+    return 5
 
 def get_recent_accuracy(user_id, topic, format, limit=5, start_time=None):
     # テストモード、または形式に応じたlimitを設定
@@ -1035,8 +1032,11 @@ def get_recent_accuracy(user_id, topic, format, limit=5, start_time=None):
         
         correct_count = 0
         for sql_result, meaning_result in results:
+            # 正解: 1点、部分正解: 0.5点、不正解: 0点
             if sql_result == '正解 ✅' or meaning_result == '正解 ✅':
                 correct_count += 1
+            elif '部分正解' in str(sql_result) or '部分正解' in str(meaning_result):
+                correct_count += 0.5
         
         accuracy = (correct_count / len(results)) * 100
         return {
@@ -1209,6 +1209,13 @@ def home_page():
             <a href='/test_mode' style='color:#667eea;text-decoration:underline;font-size:14px;'>🧪 テストモードをONにする（開発者用）</a>
         </div>
         """
+    # システムアップデートのお知らせ
+    update_notice = """
+    <div style='background-color:#e8f5e9;...'>
+        <h3>📢 システムアップデートのお知らせ</h3>
+        <p><strong>記述式と意味説明の問題数が3問から5問に変更されました。</strong></p>
+    </div>
+    """
     
     time_display = f"""
     <script>
@@ -1252,7 +1259,7 @@ def home_page():
         <p>適度な休憩を取ることをお勧めします！目を休めて、水分補給をしましょう。</p>
         </div>"""
     
-    return f"""<!doctype html><html><head><title>SQL学習支援システム</title><meta charset="utf-8"><style>body{{font-family:Arial,sans-serif;margin:20px}}.container{{max-width:700px;margin:0 auto}}.user-info{{background-color:#f0f0f0;padding:15px;border-radius:5px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center}}.user-name{{font-weight:bold;color:#333}}.logout-button{{background-color:#dc3545;color:white;padding:8px 15px;border:none;border-radius:5px;cursor:pointer;text-decoration:none;font-size:14px}}.logout-button:hover{{background-color:#c82333}}select,input[type="submit"]{{padding:10px;margin:5px;font-size:16px}}.form-group{{margin:15px 0}}.continue-button{{background-color:#28a745;color:white}}.adaptive-section{{background-color:#e3f2fd;padding:20px;border-radius:10px;margin:20px 0;border-left:5px solid #2196f3}}.adaptive-section h3{{margin-top:0;color:#1976d2}}.group-buttons{{display:flex;gap:15px;margin-top:15px}}.group-button{{flex:1;padding:15px;background-color:#fff;border:2px solid #2196f3;border-radius:8px;cursor:pointer;transition:all 0.3s;text-align:center}}.group-button:hover{{background-color:#2196f3;color:white;transform:translateY(-2px);box-shadow:0 4px 8px rgba(0,0,0,0.2)}}.group-button h4{{margin:0 0 10px 0}}.group-button p{{margin:5px 0;font-size:14px;line-height:1.6}}.group-button-link{{text-decoration:none;color:inherit;display:block}}</style></head><body><div class="container"><div class="user-info"><span class="user-name">ログイン中: {user_id}</span><a href="/logout" class="logout-button">ログアウト</a></div><h1>SQL学習支援システム</h1>{test_mode_indicator}{time_display}{time_notice}<div class="adaptive-section"><h3>🎯 適応的学習モード（推奨）</h3><p>意味説明問題を含む4つの形式で学習し、正答率に応じて自動的に形式が変わります。</p><div class="group-buttons"><a href="/select_group?group=A" class="group-button-link"><div class="group-button"><h4>📘 グループA</h4><p>✅ 意味説明あり</p><p>✅ GPTフィードバックあり</p><p>✅ 出題形式動的変化</p></div></a><a href="/select_group?group=B" class="group-button-link"><div class="group-button"><h4>📕 グループB</h4><p>✅ 意味説明あり</p><p>❌ GPTフィードバックなし</p><p>✅ 出題形式動的変化</p><p style="font-size:12px;color:#666;margin-top:8px;">※不正解時は正解例のみ表示</p></div></a></div></div><form action="/history" method="get" style="margin-top:20px;"><input type="submit" value="履歴を見る"></form><form action="/stats" method="get" style="margin-top: 10px;"><input type="submit" value="学習統計を見る" style="background-color: #667eea;"></form><form action="/export_csv" method="get" style="margin-top: 10px;"><input type="submit" value="📥 学習履歴をダウンロード (CSV)" style="background-color: #28a745;"></form></div></body></html>"""
+    return f"""<!doctype html><html><head><title>SQL学習支援システム</title><meta charset="utf-8"><style>body{{font-family:Arial,sans-serif;margin:20px}}.container{{max-width:700px;margin:0 auto}}.user-info{{background-color:#f0f0f0;padding:15px;border-radius:5px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center}}.user-name{{font-weight:bold;color:#333}}.logout-button{{background-color:#dc3545;color:white;padding:8px 15px;border:none;border-radius:5px;cursor:pointer;text-decoration:none;font-size:14px}}.logout-button:hover{{background-color:#c82333}}select,input[type="submit"]{{padding:10px;margin:5px;font-size:16px}}.form-group{{margin:15px 0}}.continue-button{{background-color:#28a745;color:white}}.adaptive-section{{background-color:#e3f2fd;padding:20px;border-radius:10px;margin:20px 0;border-left:5px solid #2196f3}}.adaptive-section h3{{margin-top:0;color:#1976d2}}.group-buttons{{display:flex;gap:15px;margin-top:15px}}.group-button{{flex:1;padding:15px;background-color:#fff;border:2px solid #2196f3;border-radius:8px;cursor:pointer;transition:all 0.3s;text-align:center}}.group-button:hover{{background-color:#2196f3;color:white;transform:translateY(-2px);box-shadow:0 4px 8px rgba(0,0,0,0.2)}}.group-button h4{{margin:0 0 10px 0}}.group-button p{{margin:5px 0;font-size:14px;line-height:1.6}}.group-button-link{{text-decoration:none;color:inherit;display:block}}</style></head><body><div class="container"><div class="user-info"><span class="user-name">ログイン中: {user_id}</span><a href="/logout" class="logout-button">ログアウト</a></div><h1>SQL学習支援システム</h1>{test_mode_indicator}{update_notice}{time_display}{time_notice}<div class="adaptive-section"><h3>🎯 適応的学習モード（推奨）</h3><p>意味説明問題を含む4つの形式で学習し、正答率に応じて自動的に形式が変わります。</p><div class="group-buttons"><a href="/select_group?group=A" class="group-button-link"><div class="group-button"><h4>📘 グループA</h4><p>✅ 意味説明あり</p><p>✅ GPTフィードバックあり</p><p>✅ 出題形式動的変化</p></div></a><a href="/select_group?group=B" class="group-button-link"><div class="group-button"><h4>📕 グループB</h4><p>✅ 意味説明あり</p><p>❌ GPTフィードバックなし</p><p>✅ 出題形式動的変化</p><p style="font-size:12px;color:#666;margin-top:8px;">※不正解時は正解例のみ表示</p></div></a></div></div><form action="/history" method="get" style="margin-top:20px;"><input type="submit" value="履歴を見る"></form><form action="/stats" method="get" style="margin-top: 10px;"><input type="submit" value="学習統計を見る" style="background-color: #667eea;"></form><form action="/export_csv" method="get" style="margin-top: 10px;"><input type="submit" value="📥 学習履歴をダウンロード (CSV)" style="background-color: #28a745;"></form></div></body></html>"""
 
 @app.route("/history")
 def history():
@@ -2337,6 +2344,7 @@ if __name__ == "__main__":
         app.run(host='0.0.0.0', port=port)
     else:
         app.run(debug=True, port=port)
+
 
 
 
