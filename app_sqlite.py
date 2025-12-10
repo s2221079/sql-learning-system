@@ -143,7 +143,7 @@ TOPIC_EXPLANATIONS = {
 <p>→ employeesテーブルからidとnameの列を取得します</p>
 ''',
     
-    'WHERE': '''
+'WHERE': '''
 <h2>📚 WHERE句について</h2>
 <p><strong>WHERE句</strong>は、データの<strong>絞り込み条件</strong>を指定する構文です。</p>
 
@@ -159,6 +159,14 @@ TOPIC_EXPLANATIONS = {
     <li><strong>IN:</strong> 複数の値を指定（例: <code>WHERE department_id IN (1, 2, 3)</code>）</li>
     <li><strong>LIKE:</strong> パターンマッチング（例: <code>WHERE name LIKE '田%'</code>）</li>
 </ul>
+
+<h3>⚠️ 論理演算子の優先順位:</h3>
+<div style="background-color:#fff3cd;padding:15px;border-radius:5px;margin:15px 0;border-left:5px solid #ffc107;">
+    <p>一般的な論理演算子の優先順位では、<strong>「かつ(AND)」が「または(OR)」より優先</strong>されます。</p>
+    <p>そのため、「a or b and c」のような表現は「<strong>a or (b and c)</strong>」と解釈されます。</p>
+    <p><strong>括弧で囲まれている場合は括弧内が優先</strong>されます。<br>
+    例: 「(a or b) and c」→ 括弧内が先に評価されるため「(a or b) and c」</p>
+</div>
 
 <h3>例:</h3>
 <pre>SELECT name FROM employees WHERE salary > 50000;</pre>
@@ -2344,6 +2352,7 @@ if __name__ == "__main__":
         app.run(host='0.0.0.0', port=port)
     else:
         app.run(debug=True, port=port)
+
 
 
 
