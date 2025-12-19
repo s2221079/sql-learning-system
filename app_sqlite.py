@@ -35,7 +35,7 @@ else:
     DB_FILE = "学習履歴.db"
     
     def get_db_connection():
-        return get_db_connection()
+        return sqlite3.connect(DB_FILE)
     
     DB_TYPE = "sqlite"
     print("✅ SQLite接続モード")
@@ -63,7 +63,7 @@ def init_db():
             )
         ''')
         
-        # ★★★ 新規：学習進捗テーブル ★★★
+        # 学習進捗テーブル
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS learning_progress (
                 user_id TEXT PRIMARY KEY,
@@ -92,7 +92,7 @@ def init_db():
             )
         ''')
         
-        # ★★★ SQLite用：学習進捗テーブル ★★★
+        # SQLite用：学習進捗テーブル
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS learning_progress (
                 user_id TEXT PRIMARY KEY,
@@ -455,6 +455,7 @@ def load_problems(sheet_name):
         return []
 
 def normalize_sql_strict(sql):
+    """SQL正規化関数（元のバグのまま）"""
     sql = sql.lower()
     sql = sql.strip()
     sql = sql.rstrip(";")
@@ -483,7 +484,11 @@ def extract_topic_from_problem_id(problem_id):
     return 'SELECT'
 
 def evaluate_sql(user_sql, correct_sql, format, problem=None, enable_gpt_feedback=True):
-    """SQL評価関数"""
+    """
+    SQL評価関数
+    enable_gpt_feedback: Trueならフィードバックを表示（グループA）、Falseなら非表示（グループB）
+    ※グループA・B共にGPTで評価を行い、フィードバック表示の有無のみが異なる
+    """
     user_sql = user_sql.lower().strip().rstrip(";")
     correct_sql = correct_sql.lower().strip().rstrip(";")
 
@@ -514,17 +519,26 @@ def evaluate_sql(user_sql, correct_sql, format, problem=None, enable_gpt_feedbac
         if user_sql_normalized == correct_sql_normalized:
             return "正解 ✅", "完璧なSQL文です！"
         
-        if not enable_gpt_feedback:
-            return "不正解 ❌", ""
-        
         if 'where' in correct_sql_normalized and 'where' not in user_sql_normalized:
-            return "不正解 ❌", "WHERE句が欠けています。条件を指定するには WHERE を使用してください。"
+            feedback = "WHERE句が欠けています。条件を指定するには WHERE を使用してください。"
+            if enable_gpt_feedback:
+                return "不正解 ❌", feedback
+            else:
+                return "不正解 ❌", ""
         
         if 'from' not in user_sql_normalized:
-            return "不正解 ❌", "FROM句が欠けています。テーブル名を指定してください。"
+            feedback = "FROM句が欠けています。テーブル名を指定してください。"
+            if enable_gpt_feedback:
+                return "不正解 ❌", feedback
+            else:
+                return "不正解 ❌", ""
         
         if not user_sql_normalized.startswith('select'):
-            return "不正解 ❌", "SQL文はSELECTから始まる必要があります。"
+            feedback = "SQL文はSELECTから始まる必要があります。"
+            if enable_gpt_feedback:
+                return "不正解 ❌", feedback
+            else:
+                return "不正解 ❌", ""
         
         topic = "SQL"
         if problem and problem.get('id'):
@@ -599,10 +613,14 @@ def evaluate_sql(user_sql, correct_sql, format, problem=None, enable_gpt_feedbac
                 else:
                     result = "不正解 ❌"
                 
+                if not enable_gpt_feedback:
+                    return result, ""
+                
                 return result, feedback
         except Exception as e:
             print(f"OpenAI API エラー: {e}")
     
+    # APIエラー時のフォールバック
     if user_sql == correct_sql:
         return "正解 ✅", "完璧なSQL文です！"
     
@@ -714,7 +732,6 @@ SQL文の動作を誤解している
         else:
             result = "不正解 ❌"
         
-        # グループBの場合はフィードバックを空にする
         if not enable_gpt_feedback:
             print(f"   グループB: フィードバックを空にします")
             return result, ""
@@ -779,9 +796,9 @@ def get_user_statistics(user_id):
         cursor = conn.cursor()
         
         if DB_TYPE == "postgresql":
-            cursor.execute('SELECT * FROM logs WHERE user_id = %s', (user_id,))
+            cursor.execute('SELECT COUNT(*) FROM logs WHERE user_id = %s', (user_id,))
         else:
-            cursor.execute('SELECT * FROM logs WHERE user_id = ?', (user_id,))
+            cursor.execute('SELECT COUNT(*) FROM logs WHERE user_id = ?', (user_id,))
         total_count = cursor.fetchone()[0]
         
         if total_count == 0:
@@ -1217,13 +1234,6 @@ def home_page():
             <a href='/test_mode' style='color:#667eea;text-decoration:underline;font-size:14px;'>🧪 テストモードをONにする（開発者用）</a>
         </div>
         """
-    # システムアップデートのお知らせ
-    update_notice = """
-    <div style='background-color:#e8f5e9;...'>
-        <h3>📢 システムアップデートのお知らせ</h3>
-        <p><strong>記述式と意味説明の問題数が3問から5問に変更されました。</strong></p>
-    </div>
-    """
     
     time_display = f"""
     <script>
@@ -1267,7 +1277,7 @@ def home_page():
         <p>適度な休憩を取ることをお勧めします！目を休めて、水分補給をしましょう。</p>
         </div>"""
     
-    return f"""<!doctype html><html><head><title>SQL学習支援システム</title><meta charset="utf-8"><style>body{{font-family:Arial,sans-serif;margin:20px}}.container{{max-width:700px;margin:0 auto}}.user-info{{background-color:#f0f0f0;padding:15px;border-radius:5px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center}}.user-name{{font-weight:bold;color:#333}}.logout-button{{background-color:#dc3545;color:white;padding:8px 15px;border:none;border-radius:5px;cursor:pointer;text-decoration:none;font-size:14px}}.logout-button:hover{{background-color:#c82333}}select,input[type="submit"]{{padding:10px;margin:5px;font-size:16px}}.form-group{{margin:15px 0}}.continue-button{{background-color:#28a745;color:white}}.adaptive-section{{background-color:#e3f2fd;padding:20px;border-radius:10px;margin:20px 0;border-left:5px solid #2196f3}}.adaptive-section h3{{margin-top:0;color:#1976d2}}.group-buttons{{display:flex;gap:15px;margin-top:15px}}.group-button{{flex:1;padding:15px;background-color:#fff;border:2px solid #2196f3;border-radius:8px;cursor:pointer;transition:all 0.3s;text-align:center}}.group-button:hover{{background-color:#2196f3;color:white;transform:translateY(-2px);box-shadow:0 4px 8px rgba(0,0,0,0.2)}}.group-button h4{{margin:0 0 10px 0}}.group-button p{{margin:5px 0;font-size:14px;line-height:1.6}}.group-button-link{{text-decoration:none;color:inherit;display:block}}</style></head><body><div class="container"><div class="user-info"><span class="user-name">ログイン中: {user_id}</span><a href="/logout" class="logout-button">ログアウト</a></div><h1>SQL学習支援システム</h1>{test_mode_indicator}{update_notice}{time_display}{time_notice}<div class="adaptive-section"><h3>🎯 適応的学習モード（推奨）</h3><p>意味説明問題を含む4つの形式で学習し、正答率に応じて自動的に形式が変わります。</p><div class="group-buttons"><a href="/select_group?group=A" class="group-button-link"><div class="group-button"><h4>📘 グループA</h4><p>✅ 意味説明あり</p><p>✅ GPTフィードバックあり</p><p>✅ 出題形式動的変化</p></div></a><a href="/select_group?group=B" class="group-button-link"><div class="group-button"><h4>📕 グループB</h4><p>✅ 意味説明あり</p><p>❌ GPTフィードバックなし</p><p>✅ 出題形式動的変化</p><p style="font-size:12px;color:#666;margin-top:8px;">※不正解時は正解例のみ表示</p></div></a></div></div><form action="/history" method="get" style="margin-top:20px;"><input type="submit" value="履歴を見る"></form><form action="/stats" method="get" style="margin-top: 10px;"><input type="submit" value="学習統計を見る" style="background-color: #667eea;"></form><form action="/export_csv" method="get" style="margin-top: 10px;"><input type="submit" value="📥 学習履歴をダウンロード (CSV)" style="background-color: #28a745;"></form></div></body></html>"""
+    return f"""<!doctype html><html><head><title>SQL学習支援システム</title><meta charset="utf-8"><style>body{{font-family:Arial,sans-serif;margin:20px}}.container{{max-width:700px;margin:0 auto}}.user-info{{background-color:#f0f0f0;padding:15px;border-radius:5px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center}}.user-name{{font-weight:bold;color:#333}}.logout-button{{background-color:#dc3545;color:white;padding:8px 15px;border:none;border-radius:5px;cursor:pointer;text-decoration:none;font-size:14px}}.logout-button:hover{{background-color:#c82333}}select,input[type="submit"]{{padding:10px;margin:5px;font-size:16px}}.form-group{{margin:15px 0}}.continue-button{{background-color:#28a745;color:white}}.adaptive-section{{background-color:#e3f2fd;padding:20px;border-radius:10px;margin:20px 0;border-left:5px solid #2196f3}}.adaptive-section h3{{margin-top:0;color:#1976d2}}.group-buttons{{display:flex;gap:15px;margin-top:15px}}.group-button{{flex:1;padding:15px;background-color:#fff;border:2px solid #2196f3;border-radius:8px;cursor:pointer;transition:all 0.3s;text-align:center}}.group-button:hover{{background-color:#2196f3;color:white;transform:translateY(-2px);box-shadow:0 4px 8px rgba(0,0,0,0.2)}}.group-button h4{{margin:0 0 10px 0}}.group-button p{{margin:5px 0;font-size:14px;line-height:1.6}}.group-button-link{{text-decoration:none;color:inherit;display:block}}</style></head><body><div class="container"><div class="user-info"><span class="user-name">ログイン中: {user_id}</span><a href="/logout" class="logout-button">ログアウト</a></div><h1>SQL学習支援システム</h1>{test_mode_indicator}{time_display}{time_notice}<div class="adaptive-section"><h3>🎯 適応的学習モード（推奨）</h3><p>意味説明問題を含む4つの形式で学習し、正答率に応じて自動的に形式が変わります。</p><div class="group-buttons"><a href="/select_group?group=A" class="group-button-link"><div class="group-button"><h4>📘 グループA</h4><p>✅ 意味説明あり</p><p>✅ GPTフィードバックあり</p><p>✅ 出題形式動的変化</p></div></a><a href="/select_group?group=B" class="group-button-link"><div class="group-button"><h4>📕 グループB</h4><p>✅ 意味説明あり</p><p>❌ GPTフィードバックなし</p><p>✅ 出題形式動的変化</p><p style="font-size:12px;color:#666;margin-top:8px;">※不正解時は正解例のみ表示</p></div></a></div></div><form action="/history" method="get" style="margin-top:20px;"><input type="submit" value="履歴を見る"></form><form action="/stats" method="get" style="margin-top: 10px;"><input type="submit" value="学習統計を見る" style="background-color: #667eea;"></form><form action="/export_csv" method="get" style="margin-top: 10px;"><input type="submit" value="📥 学習履歴をダウンロード (CSV)" style="background-color: #28a745;"></form></div></body></html>"""
 
 @app.route("/history")
 def history():
@@ -1276,7 +1286,7 @@ def history():
     user_id = session['user_id']
     
     try:
-        conn = get_db_connection()  # ← 修正
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         if DB_TYPE == "postgresql":
@@ -1317,7 +1327,6 @@ def check_sqlite():
         conn = sqlite3.connect(sqlite_file)
         cursor = conn.cursor()
         
-        # ユーザー別のログ数を確認
         cursor.execute("SELECT user_id, COUNT(*) FROM logs GROUP BY user_id")
         users = cursor.fetchall()
         conn.close()
@@ -1426,7 +1435,6 @@ def export_csv():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # ★★★ 修正：全データではなくユーザーIDでフィルタ ★★★
         placeholder = '%s' if DB_TYPE == "postgresql" else '?'
         cursor.execute(f'''
             SELECT user_id, timestamp, problem_id, format, user_sql, user_explanation,
@@ -1438,7 +1446,6 @@ def export_csv():
         
         rows = cursor.fetchall()
         
-        # カラム名を取得
         if DB_TYPE == "postgresql":
             columns = [desc[0] for desc in cursor.description]
         else:
@@ -1446,19 +1453,15 @@ def export_csv():
         
         conn.close()
         
-        # ★★★ UTF-8 with BOM でエクスポート（Excelで自動認識） ★★★
         si = StringIO()
         writer = csv.writer(si)
         
-        # ヘッダー（日本語）
         writer.writerow(['ユーザーID', '日時', '問題ID', '形式', 'ユーザーSQL', 
                         'ユーザー説明', 'SQL結果', 'SQLフィードバック', 
                         '意味結果', '意味フィードバック'])
         
-        # データ
         writer.writerows(rows)
         
-        # UTF-8 with BOM に変換
         output = si.getvalue()
         bom = '\ufeff'
         output_with_bom = bom + output
@@ -1714,7 +1717,6 @@ def practice():
     if 'user_id' not in session:
         return redirect('/')
     
-    # ★★★ デバッグ情報を追加 ★★★
     print("=" * 50)
     print("🔍 practice関数開始")
     print(f"   method: {request.method}")
@@ -1724,7 +1726,6 @@ def practice():
     print(f"   session.get('current_problem'): {session.get('current_problem', {}).get('id', 'None')}")
     print("=" * 50)
     
-    # ★★★ 新規：DBから進捗を復元 ★★★
     user_id = session.get('user_id')
     if 'learning_progress' not in session:
         db_progress = load_learning_progress(user_id)
@@ -1748,7 +1749,6 @@ def practice():
     mode = request.args.get("mode", session.get("mode", "random"))
     session["mode"] = mode
     
-    # グループA/Bの判定（修正版）
     if mode == "adaptive_b":
         enable_gpt_feedback = False
         mode = "adaptive"
@@ -1993,7 +1993,6 @@ def practice():
                             current_format = next_format
                             print(f"✅ 形式変更: {current_format_for_check} → {next_format} (正答率: {accuracy_data['accuracy']}%)")
                 
-                # ★★★ 進捗をDBに保存 ★★★
                 save_learning_progress(
                     user_id,
                     progress.get('current_topic', 'SELECT'),
@@ -2174,7 +2173,6 @@ def select_group():
     group = request.args.get('group', 'A')
     user_id = session.get('user_id')
     
-    # グループ設定を保存
     if group == 'B':
         session['enable_gpt_feedback'] = False
     else:
@@ -2185,7 +2183,6 @@ def select_group():
     group_name = "グループA" if group == "A" else "グループB"
     group_desc = "GPTフィードバックあり" if group == "A" else "GPTフィードバックなし（正解例のみ表示）"
     
-    # ★★★ DBから進捗を読み込む + デバッグ ★★★
     progress = load_learning_progress(user_id)
     
     print("=" * 50)
@@ -2208,7 +2205,6 @@ def select_group():
         'サブクエリ': 'サブクエリ'
     }
     
-    # ★★★ 「続きから再開」ボタン（進捗がある場合のみ） ★★★
     continue_button = ""
     if progress:
         is_select = progress.get('current_topic') == 'SELECT'
@@ -2234,7 +2230,6 @@ def select_group():
     else:
         print(f"   ❌ 進捗がないため、続きから再開ボタンは表示しません")
     
-    # 学習位置選択ボタンを生成
     jump_buttons = ""
     topics = ['SELECT', 'WHERE', 'ORDERBY', '集約関数', 'GROUPBY', 'HAVING', 'JOIN', 'サブクエリ']
     formats = ['選択式', '穴埋め式', '記述式', '意味説明']
@@ -2323,14 +2318,12 @@ def jump_to():
     topic = request.args.get('topic', 'SELECT')
     format = request.args.get('format', '選択式')
     
-    # ★★★ 修正：古いセッションデータをクリア ★★★
     session.pop('learning_progress', None)
     session.pop('current_problem', None)
     session.pop('recent_problem_ids', None)
     session.pop('completed_formats', None)
     session.pop('topic_explained', None)
     
-    # 学習進捗を新しく設定
     progress = {
         'current_topic': topic,
         'current_format': format,
@@ -2338,12 +2331,11 @@ def jump_to():
         'format_start_time': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
     session['learning_progress'] = progress
-    session['topic_explained'] = True  # 説明ページをスキップ
+    session['topic_explained'] = True
     
     print(f"🚀 ジャンプ機能: {topic} - {format} にジャンプしました")
     print(f"   設定した進捗: {progress}")
     
-    # 直接 practice に飛ぶ
     return redirect('/practice?mode=adaptive')
 
 if __name__ == "__main__":
@@ -2352,31 +2344,3 @@ if __name__ == "__main__":
         app.run(host='0.0.0.0', port=port)
     else:
         app.run(debug=True, port=port)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
