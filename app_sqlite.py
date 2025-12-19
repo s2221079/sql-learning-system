@@ -29,6 +29,7 @@ if DATABASE_URL:
         return psycopg2.connect(DATABASE_URL)
     
     DB_TYPE = "postgresql"
+    pass
 else:
     # SQLite（ローカル開発）
     DB_FILE = "学習履歴.db"
@@ -37,6 +38,7 @@ else:
         return sqlite3.connect(DB_FILE)
     
     DB_TYPE = "sqlite"
+    pass
 
 # データベース初期化
 def init_db():
@@ -107,6 +109,7 @@ def init_db():
         columns = [column[1] for column in cursor.fetchall()]
         if 'format' not in columns:
             cursor.execute('ALTER TABLE logs ADD COLUMN format TEXT')
+            pass
     
     conn.commit()
     conn.close()
@@ -336,8 +339,10 @@ def save_learning_progress(user_id, topic, format, question_count, start_time):
         
         conn.commit()
         conn.close()
+        pass
         
     except Exception as e:
+        pass
 
 def load_learning_progress(user_id):
     """学習進捗をDBから読み込む"""
@@ -368,6 +373,7 @@ def load_learning_progress(user_id):
             return None
             
     except Exception as e:
+        pass
         return None
 
 def get_time_elapsed():
@@ -407,6 +413,7 @@ def end_current_session():
         # 累積時間に加算
         session['accumulated_minutes'] = session.get('accumulated_minutes', 0) + session_minutes
         session['current_session_start'] = None
+        pass
 
 def get_time_display():
     """学習時間を時間:分形式で返す"""
@@ -440,6 +447,7 @@ def load_problems(sheet_name):
             problems.append(problem)
         return problems
     except Exception as e:
+        pass
         return []
 
 def normalize_sql_strict(sql):
@@ -606,6 +614,7 @@ def evaluate_sql(user_sql, correct_sql, format, problem=None, enable_gpt_feedbac
                 
                 return result, feedback
         except Exception as e:
+            pass
     
     # APIエラー時のフォールバック
     if user_sql == correct_sql:
@@ -618,6 +627,7 @@ def evaluate_sql(user_sql, correct_sql, format, problem=None, enable_gpt_feedbac
 
 def evaluate_meaning(user_explanation, correct_explanation, enable_gpt_feedback=True, problem=None):
     """意味説明評価関数"""
+    pass
     
     if not user_explanation.strip():
         if enable_gpt_feedback:
@@ -633,14 +643,17 @@ def evaluate_meaning(user_explanation, correct_explanation, enable_gpt_feedback=
     
     # APIキーチェック
     api_key = os.environ.get("OPENAI_API_KEY")
+    pass
     
     if not api_key:
+        pass
         if enable_gpt_feedback:
             return "不正解 ❌", "システムエラー: APIキーが設定されていません。"
         else:
             return "不正解 ❌", ""
     
     try:
+        pass
         problem_title = problem.get('title', '') if problem else ''
         sql_text = problem.get('answer_sql', '') if problem else ''
         
@@ -694,14 +707,17 @@ SQL文の動作を誤解している
             max_tokens=250
         )
         
+        pass
         
         text = response['choices'][0]['message']['content'].strip()
+        pass
         
         result_match = re.search(r"判定結果[:：]\s*(正解|部分正解|不正解)", text)
         feedback_match = re.search(r"フィードバック[:：]\s*(.*)", text, re.DOTALL)
         result = result_match.group(1) if result_match else "不正解"
         feedback = feedback_match.group(1).strip() if feedback_match else "説明が不十分です。"
         
+        pass
         
         if result == "正解":
             result = "正解 ✅"
@@ -711,13 +727,16 @@ SQL文の動作を誤解している
             result = "不正解 ❌"
         
         if not enable_gpt_feedback:
+            pass
             return result, ""
         
         return result, feedback
         
     except Exception as e:
+        pass
     
     # APIエラー時のフォールバック
+    pass
     if enable_gpt_feedback:
         return "不正解 ❌", "説明が不十分です。"
     else:
@@ -726,6 +745,7 @@ SQL文の動作を誤解している
 def save_log(user_id, problem_id, format, user_sql, user_explanation, sql_result, sql_feedback, exp_result, exp_feedback):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     try:
+        pass
         
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -743,15 +763,20 @@ def save_log(user_id, problem_id, format, user_sql, user_explanation, sql_result
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             '''
         
+        pass
         cursor.execute(query, (user_id, timestamp, problem_id, format, user_sql, user_explanation, 
                               sql_result, sql_feedback, exp_result, exp_feedback))
         
+        pass
         conn.commit()
         
+        pass
         conn.close()
         
+        pass
         
     except Exception as e:
+        pass
 
 def get_user_statistics(user_id):
     try:
@@ -884,6 +909,7 @@ def get_user_statistics(user_id):
             'recent_logs': recent_logs
         }
     except Exception as e:
+        pass
         return None
 
 def get_detailed_statistics(user_id):
@@ -946,6 +972,7 @@ def get_detailed_statistics(user_id):
         conn.close()
         return detailed_stats
     except Exception as e:
+        pass
         return {}
 
 def is_test_mode():
@@ -1027,6 +1054,7 @@ def get_recent_accuracy(user_id, topic, format, limit=5, start_time=None):
             'accuracy': round(accuracy, 1)
         }
     except Exception as e:
+        pass
         return None
 
 def get_next_format(current_format, accuracy):
@@ -1110,6 +1138,7 @@ def get_topic_overall_accuracy(user_id, topic, format):
             'accuracy': round(accuracy, 1)
         }
     except Exception as e:
+        pass
         return None
 
 def get_completed_formats(user_id):
@@ -1127,6 +1156,7 @@ def add_completed_format(topic, format):
     
     if format not in completed[topic]:
         completed[topic].append(format)
+        pass
     
     session['completed_formats'] = completed
 
@@ -1442,6 +1472,7 @@ def login():
     if not user_id:
         return """<h1>エラー</h1><p>ユーザーIDを入力してください。</p><br><a href='/'>ログイン画面に戻る</a>"""
     session['user_id'] = user_id
+    pass
     return redirect('/home')
 
 @app.route("/save_session_time", methods=["POST"])
@@ -1456,6 +1487,7 @@ def logout():
     user_id = session.get('user_id', 'Unknown')
     end_current_session()
     session.clear()
+    pass
     return redirect('/')
 
 @app.route("/reset_timer", methods=["POST"])
@@ -1465,6 +1497,7 @@ def reset_timer():
         session['learning_date'] = None
         session['accumulated_minutes'] = 0
         session['current_session_start'] = None
+        pass
     return redirect('/home')
 
 @app.route("/test_mode")
@@ -1662,12 +1695,14 @@ def practice():
     if 'user_id' not in session:
         return redirect('/')
     
+    pass
     
     user_id = session.get('user_id')
     if 'learning_progress' not in session:
         db_progress = load_learning_progress(user_id)
         if db_progress:
             session['learning_progress'] = db_progress
+            pass
     
     time_elapsed = get_time_elapsed()
     
@@ -1677,6 +1712,7 @@ def practice():
             problems = load_problems(sheet)
             all_problems.extend(problems)
         except Exception as e:
+            pass
     
     if not all_problems:
         return """<h1>エラー</h1><p>問題ファイル (problems.xlsx) が見つからないか、問題が読み込めません。</p><a href='/home'>ホームに戻る</a>"""
@@ -1737,6 +1773,7 @@ def practice():
             session['temp_format'] = back_to_format
             session['temp_topic'] = back_to_topic
             session['is_reviewing'] = True
+            pass
     
     return_to_main = request.args.get("return_to_main")
 
@@ -1745,6 +1782,7 @@ def practice():
         session.pop('temp_topic', None)
         session.pop('is_reviewing', None)
         session.pop('current_problem', None)
+        pass
         
         progress = session.get('learning_progress', {
             'current_topic': 'SELECT',
@@ -1770,6 +1808,7 @@ def practice():
         if topic_problems:
             selected_problem = random.choice(topic_problems)
             session["current_problem"] = selected_problem
+            pass
     
     if mode == "adaptive":
         skip_explanation = request.args.get('skip_explanation', '0')
@@ -1791,6 +1830,7 @@ def practice():
                 session['topic_explained'] = True
                 return redirect(f'/topic_explanation?topic={current_topic}')
             
+            pass
     else:
         current_format = request.args.get("format", FORMATS[0])
     
@@ -1841,6 +1881,7 @@ def practice():
         result = True
     
     else:
+        pass
 
         if request.args.get("next") == "1":
             was_reviewing = session.get('is_reviewing', False)
@@ -1850,6 +1891,7 @@ def practice():
             session.pop('is_reviewing', None)
             
             if was_reviewing:
+                pass
             
             if mode == "adaptive" and "current_problem" in session and not was_reviewing:
                 user_id = session.get('user_id', 'unknown')
@@ -1873,12 +1915,17 @@ def practice():
 
                 accuracy_data = get_recent_accuracy(user_id, topic, current_format_for_check, limit=threshold, start_time=start_time)
                 
+                pass
                 if start_time:
+                    pass
                 if accuracy_data:
+                    pass
                 else:
+                    pass
                 
                 if format_question_count >= threshold and accuracy_data and accuracy_data['total'] >= threshold:
                     
+                    pass
                     
                     if current_format_for_check == '意味説明':
                         if accuracy_data['accuracy'] >= 70:
@@ -1893,20 +1940,25 @@ def practice():
                                 
                                 session.pop('topic_explained', None)
                                 
+                                pass
                             else:
+                                pass
                         else:
                             next_format = '記述式'
                             update_learning_progress(user_id, topic, next_format)
                             current_format = next_format
+                            pass
                     else:
                         next_format = get_next_format(current_format_for_check, accuracy_data['accuracy'])
                         
+                        pass
                         
                         if next_format != current_format_for_check:
                             add_completed_format(topic, next_format)
                             
                             update_learning_progress(user_id, topic, next_format)
                             current_format = next_format
+                            pass
                 
                 save_learning_progress(
                     user_id,
@@ -1935,6 +1987,7 @@ def practice():
                     topic = progress['current_topic']
                     current_format = progress['current_format']
                 
+                pass
                 
                 topic_prefix_map = {
                     'SELECT': 'SELECT_',
@@ -1959,6 +2012,7 @@ def practice():
                     available_problems = [p for p in topic_problems if p['id'] not in recent_ids_for_topic]
                     
                     if not available_problems:
+                        pass
                         recent_ids_for_topic = []
                         available_problems = topic_problems.copy()
                     
@@ -1972,8 +2026,10 @@ def practice():
                     recent_problem_ids[topic] = recent_ids_for_topic
                     session['recent_problem_ids'] = recent_problem_ids
                     
+                    pass
                 else:
                     session["current_problem"] = random.choice(all_problems)
+                    pass
                     
             elif mode == "random":
                 if "remaining_problems" not in session or not session["remaining_problems"]:
@@ -2036,6 +2092,7 @@ def practice():
                     recent_problem_ids = {current_topic: [selected_problem['id']]}
                     session['recent_problem_ids'] = recent_problem_ids
                     
+                    pass
                 else:
                     session["current_problem"] = all_problems[0]
             elif mode == "random":
@@ -2094,7 +2151,9 @@ def select_group():
     
     progress = load_learning_progress(user_id)
     
+    pass
     if progress:
+        pass
     
     topic_names = {
         'SELECT': 'SELECT句',
@@ -2112,6 +2171,7 @@ def select_group():
         is_select = progress.get('current_topic') == 'SELECT'
         is_choice = progress.get('current_format') == '選択式'
         
+        pass
         
         if not (is_select and is_choice):
             topic_name = topic_names.get(progress['current_topic'], progress['current_topic'])
@@ -2123,8 +2183,11 @@ def select_group():
                 </a>
             </div>
             """
+            pass
         else:
+            pass
     else:
+        pass
     
     jump_buttons = ""
     topics = ['SELECT', 'WHERE', 'ORDERBY', '集約関数', 'GROUPBY', 'HAVING', 'JOIN', 'サブクエリ']
@@ -2229,6 +2292,7 @@ def jump_to():
     session['learning_progress'] = progress
     session['topic_explained'] = True
     
+    pass
     
     return redirect('/practice?mode=adaptive')
 
